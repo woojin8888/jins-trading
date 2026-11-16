@@ -2,6 +2,9 @@
 
 흰색 배경의 미국·한국 주식 차트 워크스페이스입니다. 이 저장소와 Supabase 프로젝트는 기존 사이트에서 독립되어 있으며 기존 프로젝트의 코드·테이블·로그인 데이터를 변경하지 않습니다.
 
+- 사이트: https://jins-trading.vercel.app
+- GitHub: https://github.com/woojin8888/jins-trading
+
 ## 기능
 
 - 미국장·한국장 종목 검색, 일·주·월 캔들, 확대·이동·크로스헤어, 기간 선택 및 차트 PNG 다운로드
@@ -57,7 +60,7 @@ RS 백분위는 TradingView Stock Screener의 해당 시장 거래대금 상위 
 
 ## 배포
 
-GitHub 저장소명과 Vercel 프로젝트명은 `jins-trading`입니다. 희망 주소는 `https://jins-trading.vercel.app`이며 실제 할당 결과를 확인해야 합니다. 다른 프로젝트의 환경변수나 DB를 재사용하지 않습니다.
+GitHub 저장소명과 Vercel 프로젝트명은 `jins-trading`입니다. 운영 주소 `https://jins-trading.vercel.app` 할당 및 공개 페이지 HTTP 200 응답을 확인했습니다. GitHub `main` 브랜치에 변경을 올리면 Vercel에서 자동 배포합니다. 다른 프로젝트의 환경변수나 DB를 재사용하지 않습니다.
 
 Vercel: Vite / build `npm run build` / output `dist` / Node.js 24. 새 Supabase 연결은 공개 기본 설정에 포함되어 있습니다. 별도 프로젝트로 변경할 때만 위 환경변수를 등록합니다. 개인용 Supabase 프로젝트의 무료 DB 한도는 500MB이며 이 앱은 시세 전체를 DB에 복제하지 않고 관심종목·메모만 저장합니다.
 
