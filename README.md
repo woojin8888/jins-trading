@@ -16,7 +16,7 @@
 
 ## 로컬 실행
 
-Node.js 22.12 이상(배포: Node.js 24)을 사용합니다.
+Node.js 24 LTS를 사용합니다.
 
 ```sh
 npm ci
