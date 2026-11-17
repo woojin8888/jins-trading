@@ -10,11 +10,11 @@ export function normalizeSymbol(raw,market){
   if(!/^(\^[A-Z]{2,8}|[A-Z][A-Z0-9.\-]{0,11})$/.test(value))throw Error('올바른 미국 주식 티커를 입력해 주세요. 예: AAPL');
   return value.startsWith('^')?value:value.replaceAll('.','-');
 }
-async function history(symbol){
+async function history(symbol,range='2y'){
   let lastError;
   for(const host of ['query1.finance.yahoo.com','query2.finance.yahoo.com']){
     try{
-      const response=await fetch(`https://${host}/v8/finance/chart/${encodeURIComponent(symbol)}?range=2y&interval=1d&events=history`,{headers:HEADERS,signal:AbortSignal.timeout(9000)});
+      const response=await fetch(`https://${host}/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=1d&events=history`,{headers:HEADERS,signal:AbortSignal.timeout(9000)});
       if(!response.ok)throw Error(`시세 제공처 응답 ${response.status}`);
       const body=await response.json(),result=body?.chart?.result?.[0];
       if(!result)throw Error('해당 종목의 가격 데이터를 찾지 못했습니다.');
@@ -45,6 +45,8 @@ export async function routeMarket(url){
     if(action!=='history')return json({error:'지원하지 않는 조회입니다.'},400);
     let symbol;
     try{symbol=normalizeSymbol(url.searchParams.get('symbol'),market);}catch(error){return json({error:error.message},400);}
-    try{return json(await history(symbol));}catch(error){if(market==='kr'&&/^\d{6}(\.KS)?$/.test(url.searchParams.get('symbol')||''))return json(await history(symbol.replace('.KS','.KQ')));throw error;}
+    const range=url.searchParams.get('range')||'2y';
+    if(!['1y','2y','5y','10y'].includes(range))return json({error:'지원하지 않는 조회 기간입니다.'},400);
+    try{return json(await history(symbol,range));}catch(error){if(market==='kr'&&/^\d{6}(\.KS)?$/.test(url.searchParams.get('symbol')||''))return json(await history(symbol.replace('.KS','.KQ'),range));throw error;}
   }catch(error){console.error('market-data',error.name,error.message);return json({error:error.name==='TimeoutError'?'시세 조회 시간이 초과되었습니다. 다시 시도해 주세요.':error.message||'시세를 불러오지 못했습니다.'},502);}
 }
