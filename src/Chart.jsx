@@ -5,10 +5,12 @@ import {aggregate,rsLine,volumeProfile} from './analysis.js';
 import {indicatorDefinition,nextLogicalRange,studyLabel} from './indicators.js';
 import {calculateStudy} from './indicator-calculations.js';
 import {movingAveragePoints,movingAverageValues,profileValueArea,formatVolume,resolveCandle} from './technical-math.js';
+import {useDrawings,DrawingToolbar,DrawingLayer,paintDrawing} from './DrawingTools.jsx';
 const timeKey=t=>typeof t==='string'?t:typeof t==='number'?new Date(t*1000).toISOString().slice(0,10):`${t.year}-${String(t.month).padStart(2,'0')}-${String(t.day).padStart(2,'0')}`;
 const number=(value,format)=>!Number.isFinite(value)?'—':format==='shares'?formatVolume(value):format==='volume'?Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:2}).format(value):`${value.toLocaleString('ko-KR',{maximumFractionDigits:3})}${format==='percent'?'%':''}`;
 
-export default function Chart({bars,benchmark,interval,range,showRS,showVolume,showProfile,movingAverages,volumeSettings,profileSettings,studies,onRemoveStudy,onEditStudies,onHover,onReady}){
+export default function Chart({drawingKey,bars,benchmark,interval,range,showRS,showVolume,showProfile,movingAverages,volumeSettings,profileSettings,studies,onRemoveStudy,onEditStudies,onHover,onReady}){
+  const drawing=useDrawings(drawingKey),[drawingApi,setDrawingApi]=useState(null);
   const host=useRef(null),runtime=useRef(null),profileOptions=useRef({...profileSettings,visible:showProfile}),callbacks=useRef({}),[profile,setProfile]=useState([]),[profileHeight,setProfileHeight]=useState(360),[readouts,setReadouts]=useState([]),[paneTops,setPaneTops]=useState({}),[axisWidth,setAxisWidth]=useState(70),[profileWidth,setProfileWidth]=useState(150),[profileSummary,setProfileSummary]=useState(null);
   callbacks.current={onHover,onReady,onRemoveStudy,onEditStudies};profileOptions.current={...profileSettings,visible:showProfile};
   const studyKey=JSON.stringify(studies),averageKey=JSON.stringify(movingAverages),volumeKey=JSON.stringify(volumeSettings),profileKey=JSON.stringify(profileSettings),panelCount=Number(showVolume)+Number(showRS&&benchmark.length>0)+studies.filter(s=>s.visible&&indicatorDefinition(s.type)?.placement==='panel').length;
@@ -17,7 +19,7 @@ export default function Chart({bars,benchmark,interval,range,showRS,showVolume,s
     const container=host.current;
     const chart=createChart(container,{autoSize:true,layout:{background:{type:ColorType.Solid,color:'#fff'},textColor:'#7b8495',fontFamily:'Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',fontSize:11,panes:{separatorColor:'#e0e6ef',separatorHoverColor:'#b8c9e8',enableResize:true}},grid:{vertLines:{color:'#f3f5f8'},horzLines:{color:'#f0f3f7'}},rightPriceScale:{borderColor:'#edf0f5',minimumWidth:70,scaleMargins:{top:.13,bottom:.08}},timeScale:{borderColor:'#e9edf3',rightOffset:6,timeVisible:false},crosshair:{mode:CrosshairMode.Normal,vertLine:{color:'#9ea8b9',labelBackgroundColor:'#68748a'},horzLine:{color:'#9ea8b9',labelBackgroundColor:'#68748a'}},localization:{locale:'ko-KR'}});
     const candles=chart.addSeries(CandlestickSeries,{upColor:'#0baf8c',downColor:'#ef5b68',borderVisible:false,wickUpColor:'#0baf8c',wickDownColor:'#ef5b68'});
-    const state={chart,candles,series:[],groups:[],data:[],candleMap:new Map(),previous:null,profileLines:[],frame:0,profile:[],axisWidth:70,disposed:false};runtime.current=state;
+    const state={chart,candles,series:[],groups:[],data:[],candleMap:new Map(),previous:null,profileLines:[],frame:0,profile:[],axisWidth:70,disposed:false,drawingListeners:new Set()};runtime.current=state;setDrawingApi(state);
     function readValues(event){
       const lastTime=state.data.at(-1)?.time;
       setReadouts(state.groups.map(group=>({...group,values:group.members.map(member=>{const last=member.data.at(-1),value=event?.time?event.seriesData.get(member.api)?.value:last?.time===lastTime?last.value:null;return {name:member.name,value:number(value,member.format),color:member.color};})})));
@@ -29,6 +31,7 @@ export default function Chart({bars,benchmark,interval,range,showRS,showVolume,s
         const panes=chart.panes(),tops={};let top=0;
         for(let index=0;index<panes.length;index++){tops[index]=top;top+=panes[index].getHeight();}
         setPaneTops(previous=>JSON.stringify(previous)===JSON.stringify(tops)?previous:tops);setProfileHeight(panes[0].getHeight());
+        for(const listener of state.drawingListeners)listener();
         state.axisWidth=chart.priceScale('right').width()||70;setAxisWidth(state.axisWidth);
         for(const priceLine of state.profileLines)candles.removePriceLine(priceLine);state.profileLines=[];
         const options=profileOptions.current;
@@ -45,14 +48,14 @@ export default function Chart({bars,benchmark,interval,range,showRS,showVolume,s
     state.schedule=update;
     const crosshair=event=>{const bar=event.seriesData.get(candles);callbacks.current.onHover?.(bar?.close?resolveCandle(state.candleMap,event.time):null);readValues(event);};
     const dragged=event=>{if(event.buttons)update();};
-    chart.subscribeCrosshairMove(crosshair);chart.timeScale().subscribeVisibleTimeRangeChange(update);
+    chart.subscribeCrosshairMove(crosshair);chart.timeScale().subscribeVisibleLogicalRangeChange(update);
     const observer=new ResizeObserver(update);observer.observe(container);container.addEventListener('pointerup',update);container.addEventListener('pointermove',dragged);container.addEventListener('wheel',update,{passive:true});
     callbacks.current.onReady?.({reset:()=>chart.timeScale().fitContent(),screenshot:()=>{
       const canvas=chart.takeScreenshot(),ctx=canvas.getContext('2d'),ratio=canvas.width/container.clientWidth;ctx.save();ctx.scale(ratio,ratio);ctx.beginPath();ctx.rect(0,0,container.clientWidth-state.axisWidth,chart.panes()[0].getHeight());ctx.clip();
-      for(const b of state.profile){ctx.fillStyle=b.poc?profileOptions.current.pocColor:profileOptions.current.color;ctx.globalAlpha=b.poc ? .5 : b.inValueArea ? .3 : .13;ctx.fillRect(container.clientWidth-state.axisWidth-b.width,b.y1,b.width,Math.max(1,b.y2-b.y1-1));}ctx.restore();
+      for(const b of state.profile){ctx.fillStyle=b.poc?profileOptions.current.pocColor:profileOptions.current.color;ctx.globalAlpha=b.poc ? .5 : b.inValueArea ? .3 : .13;ctx.fillRect(container.clientWidth-state.axisWidth-b.width,b.y1,b.width,Math.max(1,b.y2-b.y1-1));}ctx.globalAlpha=1;for(const row of state.renderedDrawings||[])paintDrawing(ctx,row,chart.timeScale().width());ctx.restore();
       const a=document.createElement('a');a.download='jins-trading-chart.png';a.href=canvas.toDataURL('image/png');a.click();
     }});
-    return()=>{state.disposed=true;cancelAnimationFrame(state.frame);observer.disconnect();container.removeEventListener('pointerup',update);container.removeEventListener('pointermove',dragged);container.removeEventListener('wheel',update);chart.unsubscribeCrosshairMove(crosshair);chart.timeScale().unsubscribeVisibleTimeRangeChange(update);chart.remove();runtime.current=null;callbacks.current.onReady?.(null);};
+    return()=>{state.disposed=true;state.drawingListeners.clear();cancelAnimationFrame(state.frame);observer.disconnect();container.removeEventListener('pointerup',update);container.removeEventListener('pointermove',dragged);container.removeEventListener('wheel',update);chart.unsubscribeCrosshairMove(crosshair);chart.timeScale().unsubscribeVisibleLogicalRangeChange(update);chart.remove();runtime.current=null;callbacks.current.onReady?.(null);};
   },[]);
 
   useEffect(()=>{
@@ -96,5 +99,5 @@ export default function Chart({bars,benchmark,interval,range,showRS,showVolume,s
 
   useEffect(()=>{runtime.current?.schedule();},[showProfile,profileKey]);
   const renderReadout=row=><div className="chart-study-readout" key={row.id}><button className="study-readout-name" style={{color:row.color}} onClick={()=>callbacks.current.onEditStudies?.(row.id)}>{row.label}</button><span>{row.values.map(value=><span key={value.name} style={{color:value.color}} title={value.name}>{row.values.length>1?`${value.name} `:''}<b>{value.value}</b></span>)}</span><button className="remove-chart-study" aria-label={`${row.label} 차트에서 제거`} onClick={()=>callbacks.current.onRemoveStudy?.(row.id)}><X size={11}/></button></div>;
-  return <div className="chart-canvas-wrap with-studies" style={{'--chart-axis-width':axisWidth+'px',height:`calc(var(--price-pane-height, 360px) + ${panelCount*120+28}px)`}}><div className="chart-watermark" style={{top:Math.max(90,profileHeight*.4)}} aria-hidden="true">Jin's Trading<span>진스트레이딩</span></div><div className="chart-canvas" ref={host}/><div className="chart-overlay-readouts">{readouts.filter(r=>r.pane===0).map(renderReadout)}{showProfile&&renderReadout({id:'volumeProfile',label:'매물대 (추정)',color:profileSettings.color,values:[['POC',profileSummary?.pocPrice],['VAH',profileSummary?.vah],['VAL',profileSummary?.val]].map(([name,value])=>({name,value:number(value),color:name==='POC'?profileSettings.pocColor:profileSettings.color}))})}</div>{readouts.filter(r=>r.pane>0).map(row=><div className="chart-pane-readout" key={row.id} style={{top:(paneTops[row.pane]||0)+6}}>{renderReadout(row)}</div>)}{showProfile&&<svg className="volume-profile" width={profileWidth} height={profileHeight} aria-label="표시 구간 거래량 프로파일 추정"><title>캔들 고저 범위에 거래량을 균등 배분한 추정치</title>{profile.map((b,i)=><rect key={i} x={profileWidth-b.width} y={b.y1} width={b.width} height={Math.max(1,b.y2-b.y1-1)} fill={b.poc?profileSettings.pocColor:profileSettings.color} opacity={b.poc ? .5 : b.inValueArea ? .3 : .13}/>)}</svg>}</div>;
+  return <div className="chart-drawing-workspace"><DrawingToolbar drawing={drawing}/><div className="chart-canvas-wrap with-studies" style={{'--chart-axis-width':axisWidth+'px',height:`calc(var(--price-pane-height, 360px) + ${panelCount*120+28}px)`}}><div className="chart-watermark" style={{top:Math.max(90,profileHeight*.4)}} aria-hidden="true">Jin's Trading<span>진스트레이딩</span></div><div className="chart-canvas" ref={host}/><div className="chart-overlay-readouts">{readouts.filter(r=>r.pane===0).map(renderReadout)}{showProfile&&renderReadout({id:'volumeProfile',label:'매물대 (추정)',color:profileSettings.color,values:[['POC',profileSummary?.pocPrice],['VAH',profileSummary?.vah],['VAL',profileSummary?.val]].map(([name,value])=>({name,value:number(value),color:name==='POC'?profileSettings.pocColor:profileSettings.color}))})}</div>{readouts.filter(r=>r.pane>0).map(row=><div className="chart-pane-readout" key={row.id} style={{top:(paneTops[row.pane]||0)+6}}>{renderReadout(row)}</div>)}{showProfile&&<svg className="volume-profile" width={profileWidth} height={profileHeight} aria-label="표시 구간 거래량 프로파일 추정"><title>캔들 고저 범위에 거래량을 균등 배분한 추정치</title>{profile.map((b,i)=><rect key={i} x={profileWidth-b.width} y={b.y1} width={b.width} height={Math.max(1,b.y2-b.y1-1)} fill={b.poc?profileSettings.pocColor:profileSettings.color} opacity={b.poc ? .5 : b.inValueArea ? .3 : .13}/>)}</svg>}<DrawingLayer key={drawingKey} api={drawingApi} drawing={drawing}/></div></div>;
 }
