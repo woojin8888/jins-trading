@@ -55,8 +55,8 @@ export function useAccount(){
 const cache=new Map();
 export async function marketData(params,signal,refresh=false){
   const query=new URLSearchParams(params).toString(),cached=cache.get(query);
-  if(!refresh&&cached&&Date.now()-cached.time<120000)return cached.data;
-  const response=await fetch('/api/market?'+query,{signal,cache:refresh?'reload':'default'}),data=await response.json();
+  if(!refresh&&cached&&Date.now()-cached.time<30000)return cached.data;
+  const response=await fetch('/api/market?'+query+(refresh?'&fresh='+Date.now():''),{signal,cache:refresh?'no-store':'default'}),data=await response.json();
   if(!response.ok||data.error)throw Error(data.error||'데이터를 불러오지 못했습니다.');
   cache.set(query,{time:Date.now(),data});while(cache.size>25)cache.delete(cache.keys().next().value);return data;
 }

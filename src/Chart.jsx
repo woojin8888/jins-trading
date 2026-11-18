@@ -5,6 +5,7 @@ import {aggregate,rsLine,volumeProfile} from './analysis.js';
 import {indicatorDefinition,nextLogicalRange,studyLabel} from './indicators.js';
 import {calculateStudy} from './indicator-calculations.js';
 import {movingAveragePoints,movingAverageValues,profileValueArea,formatVolume,resolveCandle} from './technical-math.js';
+import {CHART_COLORS,volumePoints} from './chart-colors.js';
 import {useDrawings,DrawingToolbar,DrawingLayer,paintDrawing} from './DrawingTools.jsx';
 const timeKey=t=>typeof t==='string'?t:typeof t==='number'?new Date(t*1000).toISOString().slice(0,10):`${t.year}-${String(t.month).padStart(2,'0')}-${String(t.day).padStart(2,'0')}`;
 const number=(value,format)=>!Number.isFinite(value)?'—':format==='shares'?formatVolume(value):format==='volume'?Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:2}).format(value):`${value.toLocaleString('ko-KR',{maximumFractionDigits:3})}${format==='percent'?'%':''}`;
@@ -18,11 +19,11 @@ export default function Chart({drawingKey,bars,benchmark,interval,range,showRS,s
   useEffect(()=>{
     const container=host.current;
     const chart=createChart(container,{autoSize:true,layout:{background:{type:ColorType.Solid,color:'#fff'},textColor:'#7b8495',fontFamily:'Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',fontSize:11,panes:{separatorColor:'#e0e6ef',separatorHoverColor:'#b8c9e8',enableResize:true}},grid:{vertLines:{color:'#f3f5f8'},horzLines:{color:'#f0f3f7'}},rightPriceScale:{borderColor:'#edf0f5',minimumWidth:70,scaleMargins:{top:.13,bottom:.08}},timeScale:{borderColor:'#e9edf3',rightOffset:6,timeVisible:false},crosshair:{mode:CrosshairMode.Normal,vertLine:{color:'#9ea8b9',labelBackgroundColor:'#68748a'},horzLine:{color:'#9ea8b9',labelBackgroundColor:'#68748a'}},localization:{locale:'ko-KR'}});
-    const candles=chart.addSeries(CandlestickSeries,{upColor:'#0baf8c',downColor:'#ef5b68',borderVisible:false,wickUpColor:'#0baf8c',wickDownColor:'#ef5b68'});
+    const candles=chart.addSeries(CandlestickSeries,{upColor:CHART_COLORS.up,downColor:CHART_COLORS.down,borderVisible:false,wickUpColor:CHART_COLORS.up,wickDownColor:CHART_COLORS.down});
     const state={chart,candles,series:[],groups:[],data:[],candleMap:new Map(),previous:null,profileLines:[],frame:0,profile:[],axisWidth:70,disposed:false,drawingListeners:new Set()};runtime.current=state;setDrawingApi(state);
     function readValues(event){
       const lastTime=state.data.at(-1)?.time;
-      setReadouts(state.groups.map(group=>({...group,values:group.members.map(member=>{const last=member.data.at(-1),value=event?.time?event.seriesData.get(member.api)?.value:last?.time===lastTime?last.value:null;return {name:member.name,value:number(value,member.format),color:member.color};})})));
+      setReadouts(state.groups.map(group=>({...group,values:group.members.map(member=>{const last=member.data.at(-1),value=event?.time?event.seriesData.get(member.api)?.value:last?.time===lastTime?last.value:null,point=member.pointColors?.get(event?.time?timeKey(event.time):lastTime);return {name:member.name,value:number(value,member.format),color:point||member.color};})})));
     }
     state.readValues=readValues;
     const update=()=>{
@@ -73,14 +74,14 @@ export default function Chart({drawingKey,bars,benchmark,interval,range,showRS,s
       if(spec.format==='percent')options.priceFormat={type:'custom',minMove:.001,formatter:value=>`${value.toFixed(2)}%`};
       if(bounds)options.autoscaleInfoProvider=()=>({priceRange:{minValue:bounds[0],maxValue:bounds[1]}});
       const api=chart.addSeries(spec.kind==='histogram'?HistogramSeries:LineSeries,options,pane);
-      api.setData(spec.kind==='histogram'?spec.data.map(p=>({...p,color:p.color||(p.value>=0?'#77c7b2':'#ef9ca5')})):spec.data);state.series.push(api);return {...spec,api};
+      api.setData(spec.kind==='histogram'?spec.data.map(p=>({...p,color:p.color||(p.value>=0?'#77c7b2':'#ef9ca5')})):spec.data);state.series.push(api);return {...spec,api,pointColors:spec.name==='거래량'?new Map(spec.data.map(point=>[point.time,point.color])):null};
     }
     chart.applyOptions({rightPriceScale:{minimumWidth:showVolume&&volumeSettings.format==='shares'?106:70}});
     for(const ma of movingAverages){if(!ma.visible)continue;const label=ma.type.toUpperCase()+' '+ma.period,member=add({name:label,color:ma.color,width:ma.width,data:movingAveragePoints(ma,data)},0);state.groups.push({id:ma.id,label,pane:0,color:ma.color,members:[member]});}
     if(showVolume){
-      const pane=nextPane++,format=volumeSettings.format==='shares'?'shares':'volume',members=[add({name:'거래량',color:'#439d88',kind:volumeSettings.mode==='line'?'line':'histogram',priceLine:true,width:2,format,data:data.filter(b=>Number.isFinite(b.volume)).map(b=>({time:b.time,value:b.volume,color:b.close>=b.open?'#a1ded1':'#f6bcc1'}))},pane)];
+      const pane=nextPane++,format=volumeSettings.format==='shares'?'shares':'volume',members=[add({name:'거래량',color:CHART_COLORS.up,kind:volumeSettings.mode==='line'?'line':'histogram',priceLine:true,width:2,format,data:volumePoints(data)},pane)];
       if(volumeSettings.averageVisible){const values=movingAverageValues(volumeSettings.averageType,data.map(b=>b.volume),volumeSettings.averagePeriod);members.push(add({name:volumeSettings.averageType.toUpperCase()+' '+volumeSettings.averagePeriod,color:volumeSettings.averageColor,width:volumeSettings.averageWidth,format,data:values.flatMap((value,i)=>Number.isFinite(value)?[{time:data[i].time,value}]:[])},pane));}
-      state.groups.push({id:'volume',label:'거래량',pane,color:'#439d88',members});
+      state.groups.push({id:'volume',label:'거래량',pane,color:CHART_COLORS.up,members});
     }
     if(showRS&&benchmark.length){const pane=nextPane++,member=add({name:'RS',color:'#8765df',data:rsLine(data,aggregate(benchmark,interval))},pane);state.groups.push({id:'rs',label:'지수 대비 RS',pane,color:member.color,members:[member]});}
     for(const study of studies){
