@@ -1,3 +1,4 @@
+import {INTRADAY,parseIntraday} from './intraday-data.js';
 import {parseDailyHistory,needsLatestSession,mergeLatestSession,historyQuality} from './history-data.js';
 import {RANK_SORTS,scanRequest,scanRows,koreanStock} from './rankings.js';
 const HEADERS={'User-Agent':'Mozilla/5.0','Accept':'application/json'};
@@ -41,6 +42,13 @@ async function history(symbol,range='2y'){
   }
   throw lastError;
 }
+async function intraday(symbol,interval){
+  const config=INTRADAY[interval];let failure;
+  for(const host of ['query1.finance.yahoo.com','query2.finance.yahoo.com']){
+    try{const response=await fetch(`https://${host}/v8/finance/chart/${encodeURIComponent(symbol)}?range=${config.range}&interval=${config.source}&includePrePost=false`,{headers:HEADERS,signal:AbortSignal.timeout(12000),cache:'no-store'});if(!response.ok)throw Error(`분봉 제공처 응답 ${response.status}`);const body=await response.json(),result=body.chart?.result?.[0];if(!result)throw Error('분봉 자료가 없습니다.');return {...parseIntraday(result,symbol,interval),name:await koreanName(symbol)||result.meta.longName||symbol,fetchedAt:new Date().toISOString()};}catch(error){failure=error;}
+  }
+  throw failure;
+}
 async function rankedStocks(market,sort='value',offset=0){
   const response=await fetch(`https://scanner.tradingview.com/${market==='kr'?'korea':'america'}/scan`,{method:'POST',headers:{...HEADERS,'Content-Type':'application/json'},body:JSON.stringify(scanRequest(market,sort,offset)),signal:AbortSignal.timeout(12000)});
   if(!response.ok)throw Error('종목 목록을 불러오지 못했습니다. 잠시 후 새로고침해 주세요.');
@@ -67,6 +75,8 @@ export async function routeMarket(url){
     if(action!=='history')return reply({error:'지원하지 않는 조회입니다.'},400);
     let symbol;
     try{symbol=normalizeSymbol(url.searchParams.get('symbol'),market);}catch(error){return reply({error:error.message},400);}
+    const interval=url.searchParams.get('interval')||'1d';
+    if(interval!=='1d'){if(!Object.hasOwn(INTRADAY,interval))return reply({error:'지원하지 않는 분봉 주기입니다.'},400);return reply(await intraday(symbol,interval));}
     const range=url.searchParams.get('range')||'2y';
     if(!['1y','2y','5y','10y'].includes(range))return reply({error:'지원하지 않는 조회 기간입니다.'},400);
     try{return reply(await history(symbol,range));}catch(error){if(market==='kr'&&/^\d[A-Z0-9]{5}(\.KS)?$/.test(url.searchParams.get('symbol')||''))return reply(await history(symbol.replace('.KS','.KQ'),range));throw error;}

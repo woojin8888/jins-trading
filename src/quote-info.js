@@ -9,7 +9,8 @@ export function quoteComparison(history,row){
   if(history.currency&&row.currency&&history.currency!==row.currency)return {status:'currency-mismatch'};
   const date=row.barAt?new Date(row.barAt).toLocaleDateString('sv-SE',{timeZone:history.timeZone||'UTC'}):null;
   if(!date)return {status:'unknown-session'};
-  if(date!==bar.time)return {status:'different-session',chartDate:bar.time,listDate:date};
+  const chartDate=typeof bar.time==='number'?new Date(bar.time*1000).toLocaleDateString('sv-SE',{timeZone:history.timeZone||'UTC'}):bar.time;
+  if(date!==chartDate)return {status:'different-session',chartDate,listDate:date};
   const difference=Math.abs(bar.close-row.price),percent=difference/row.price*100,tick=Math.max(Number.isFinite(row.tickSize)&&row.tickSize>0?row.tickSize:0,10**-(history.quote?.precision??2));
   return {status:difference<=tick+tick*1e-5?'within-tick':'different-price',percent,difference,tick};
 }

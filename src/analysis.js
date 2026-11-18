@@ -23,7 +23,7 @@ export function minervini(bars,rsRating=null){
 }
 export function rsLine(bars,benchmark){const map=new Map(benchmark.map(b=>[b.time,b.close]));const shared=bars.filter(b=>map.get(b.time)>0);if(!shared.length)return [];const base=shared[0].close/map.get(shared[0].time);return shared.map(b=>({time:b.time,value:b.close/map.get(b.time)/base*100}));}
 export function aggregate(bars,interval){
-  if(interval==='D')return bars;
+  if(!['W','M'].includes(interval))return bars;
   const groups=new Map();for(const b of bars){const d=new Date(b.time+'T00:00:00Z');if(interval==='W')d.setUTCDate(d.getUTCDate()-((d.getUTCDay()+6)%7));else d.setUTCDate(1);const key=d.toISOString().slice(0,10);const current=groups.get(key);if(current){current.high=Math.max(current.high,b.high);current.low=Math.min(current.low,b.low);current.close=b.close;current.volume=current.volume===null||b.volume===null?null:current.volume+b.volume;}else groups.set(key,{...b,time:key});}return [...groups.values()];
 }
 export function volumeProfile(bars,count=32){

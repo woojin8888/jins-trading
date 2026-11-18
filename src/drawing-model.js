@@ -8,7 +8,7 @@ export function normalizeDrawings(raw){
   const ids=new Set();
   return {version:1,items:raw.items.slice(0,200).flatMap(row=>{
     if(!row||typeof row.id!=='string'||ids.has(row.id.slice(0,100))||!DRAWING_TYPES.includes(row.type)||!Array.isArray(row.points)||row.points.length!==(row.type==='horizontal'||row.type==='text'?1:2)||!row.points.every(validPoint))return [];
-    ids.add(row.id.slice(0,100));return [{id:row.id.slice(0,100),type:row.type,points:row.points.map(p=>({time:p.time,price:p.price})),color:/^#[\da-f]{6}$/i.test(row.color)?row.color:'#2463eb',width:[1,2,3,4].includes(row.width)?row.width:2,text:typeof row.text==='string'?row.text.slice(0,200):'',visible:row.visible!==false}];
+    ids.add(row.id.slice(0,100));return [{id:row.id.slice(0,100),type:row.type,points:row.points.map(p=>({time:p.time,price:p.price,...(typeof p.dateOnly==='boolean'?{dateOnly:p.dateOnly}:{})})),color:/^#[\da-f]{6}$/i.test(row.color)?row.color:'#2463eb',width:[1,2,3,4].includes(row.width)?row.width:2,text:typeof row.text==='string'?row.text.slice(0,200):'',visible:row.visible!==false}];
   })};
 }
 export const timeStamp=time=>typeof time==='string'?Date.parse(time+'T00:00:00Z'):typeof time==='number'?time*1000:Date.UTC(time.year,time.month-1,time.day);
@@ -32,6 +32,17 @@ export function projectDrawing(item,project){
   return points.every(p=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y))?{...item,points}:null;
 }
 export function translateDrawing(item,deltaTime,deltaPrice){
-  const points=item.points.map(p=>({time:p.time+deltaTime,price:p.price+deltaPrice}));
+  const points=item.points.map(p=>({...p,time:p.time+deltaTime,price:p.price+deltaPrice}));
   return points.every(validPoint)?{...item,points}:item;
+}
+
+export function drawingTimeMap(bars,timeZone='UTC'){
+  const formatter=new Intl.DateTimeFormat('sv-SE',{timeZone,year:'numeric',month:'2-digit',day:'2-digit'}),intraday=typeof bars[0]?.time==='number',byDate=new Map();
+  if(intraday)for(const bar of bars){const date=formatter.format(new Date(bar.time*1000));if(!byDate.has(date))byDate.set(date,bar.time*1000);}
+  return {intraday,byDate,formatter};
+}
+export function chartAnchorTime(point,map){
+  const dateOnly=point.dateOnly??point.time%86400000===0;
+  if(map.intraday)return dateOnly?map.byDate.get(new Date(point.time).toISOString().slice(0,10))??point.time:point.time;
+  return dateOnly?point.time:Date.parse(map.formatter.format(new Date(point.time))+'T00:00:00Z');
 }

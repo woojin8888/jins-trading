@@ -1,6 +1,6 @@
 import React,{useEffect,useId,useLayoutEffect,useMemo,useRef,useState} from 'react';
 import {ArrowUpRight,ChevronDown,Circle,Eye,EyeOff,Minus,MousePointer2,Redo2,Square,Trash2,TrendingUp,Type,Undo2,X} from 'lucide-react';
-import {anchorAtLogical,DRAWING_LABELS,drawingStorageKey,logicalAtTime,normalizeDrawings,projectDrawing,timeStamp,translateDrawing} from './drawing-model.js';
+import {anchorAtLogical,DRAWING_LABELS,drawingStorageKey,logicalAtTime,normalizeDrawings,projectDrawing,timeStamp,translateDrawing,drawingTimeMap,chartAnchorTime} from './drawing-model.js';
 const EMPTY={version:1,items:[]},ICONS={horizontal:Minus,trend:TrendingUp,rectangle:Square,ellipse:Circle,arrow:ArrowUpRight,text:Type};
 function readDocument(key){try{return {key,doc:normalizeDrawings(JSON.parse(localStorage.getItem(drawingStorageKey(key))||'null')),past:[],future:[]};}catch{return {key,doc:EMPTY,past:[],future:[]};}}
 export function useDrawings(key){
@@ -51,10 +51,11 @@ export function DrawingLayer({api,drawing}){
     document.addEventListener('keydown',keydown);return()=>document.removeEventListener('keydown',keydown);
   },[]);
   const times=useMemo(()=>api?.data.map(bar=>timeStamp(bar.time))||[],[api,api?.data]);
+  const timeMap=useMemo(()=>drawingTimeMap(api?.data||[],api?.timeZone||'UTC'),[api,api?.data,api?.timeZone]);
   if(!api||api.disposed||!api.data.length)return null;
   const plotWidth=Math.max(0,api.chart.timeScale().width()),height=api.chart.panes()[0].getHeight();
-  function project(point){const logical=logicalAtTime(point.time,times),x=api.chart.timeScale().logicalToCoordinate(logical),y=api.candles.priceToCoordinate(point.price);return x===null||y===null?null:{x,y};}
-  function anchor(event){const rect=svg.current.getBoundingClientRect(),x=Math.max(0,Math.min(plotWidth,event.clientX-rect.left)),y=Math.max(0,Math.min(height,event.clientY-rect.top)),logical=api.chart.timeScale().coordinateToLogical(x),price=api.candles.coordinateToPrice(y);return anchorAtLogical(logical,price,times);}
+  function project(point){const logical=logicalAtTime(chartAnchorTime(point,timeMap),times),x=api.chart.timeScale().logicalToCoordinate(logical),y=api.candles.priceToCoordinate(point.price);return x===null||y===null?null:{x,y};}
+  function anchor(event){const rect=svg.current.getBoundingClientRect(),x=Math.max(0,Math.min(plotWidth,event.clientX-rect.left)),y=Math.max(0,Math.min(height,event.clientY-rect.top)),logical=api.chart.timeScale().coordinateToLogical(x),price=api.candles.coordinateToPrice(y);const point=anchorAtLogical(logical,price,times);return point?{...point,dateOnly:typeof api.data[0].time==='string'}:null;}
   function create(event){
     if(d.tool==='select'){d.setSelectedId(null);return;}event.preventDefault();event.stopPropagation();svg.current.focus();const point=anchor(event);if(!point)return;
     if(d.tool==='text'&&!d.text.trim())return;
