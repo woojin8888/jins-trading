@@ -50,7 +50,8 @@ export function useAccount(){
   },[mutate]);
   const changeGroup=useCallback((stock,group)=>mutate(doc=>({...doc,watchlist:doc.watchlist.map(r=>r.market===stock.market&&r.symbol===stock.symbol?{...r,group_name:group}:r)}),uid=>supabase.from('trading_watchlist').update({group_name:group}).eq('user_id',uid).eq('market',stock.market).eq('symbol',stock.symbol)),[mutate]);
   const saveNote=useCallback((market,symbol,content)=>{const row={market,symbol,content,updated_at:new Date().toISOString()};return mutate(doc=>({...doc,notes:[...doc.notes.filter(r=>r.market!==market||r.symbol!==symbol),row]}),uid=>supabase.from('trading_notes').upsert({...row,user_id:uid},{onConflict:'user_id,market,symbol'}));},[mutate]);
-  return {session,...document,sync:ready?sync:'로그인 확인 중…',error:authState.error||error||storageWarning,authReady:ready,authError:authState.error,ready:ready&&loadedId===(id||null),toggleWatch,changeGroup,saveNote};
+  const importWatch=useCallback(rows=>mutate(doc=>{const map=new Map(doc.watchlist.map(row=>[row.market+':'+row.symbol,row]));for(const row of rows)map.set(row.market+':'+row.symbol,{...map.get(row.market+':'+row.symbol),...row});return {...doc,watchlist:[...map.values()]};},uid=>supabase.from('trading_watchlist').upsert(rows.map(row=>({...row,user_id:uid})),{onConflict:'user_id,market,symbol'})),[mutate]);
+  return {session,...document,sync:ready?sync:'로그인 확인 중…',error:authState.error||error||storageWarning,authReady:ready,authError:authState.error,ready:ready&&loadedId===(id||null),toggleWatch,changeGroup,saveNote,importWatch};
 }
 const cache=new Map();
 export async function marketData(params,signal,refresh=false){

@@ -32,6 +32,6 @@ export default function IndicatorManager({preferences,setField,storageError,onDo
     </>}
     <details className="base-chart-settings"><summary>기본 패널 · 자동 갱신</summary><div className="settings-list">{[['거래량','showVolume'],['상대강도 RS','showRS'],['매물대 (추정)','showProfile'],['1분마다 가격 데이터 갱신','autoRefresh'],['워터마크에 티커 표시','showTickerWatermark']].map(([label,key])=><label key={key}><span>{label}</span><input type="checkbox" checked={preferences[key]} onChange={e=>setField(key,e.target.checked)}/></label>)}</div><p>자동 갱신은 데이터 제공처의 지연을 해소하지 않습니다. 업로드 RS·미너비니는 선택한 주기의 확정 봉 기준이며, ATR·VCP 카드는 일봉 기준입니다.</p></details>
     <p className="indicator-reference">TradingView <a href="https://www.tradingview.com/charting-library-docs/latest/ui_elements/indicators/Indicators-List/" target="_blank" rel="noreferrer">공식 지표 목록</a>을 참고한 지원 지표입니다. 전체 TradingView 지표·커뮤니티 Pine Script를 가져오는 기능은 아닙니다.</p>
-    {storageError&&<p className="error-text" role="alert">{storageError}</p>}<div className="indicator-dialog-footer"><span>설정은 현재 브라우저에 저장됩니다.</span><button className="primary" onClick={onDone}><Check size={16}/>차트로 돌아가기</button></div>
+    {storageError&&<p className="error-text" role="alert">{storageError}</p>}<div className="indicator-dialog-footer"><span>로그인 시 계정에 저장 · 로그인 전 브라우저 저장</span><button className="primary" onClick={onDone}><Check size={16}/>차트로 돌아가기</button></div>
   </div>;
 }

@@ -1,4 +1,4 @@
-import React,{useEffect,useRef,useState} from 'react';
+import React,{useCallback,useEffect,useRef,useState} from 'react';
 import {X} from 'lucide-react';
 import {createChart,CandlestickSeries,LineSeries,HistogramSeries,ColorType,CrosshairMode} from 'lightweight-charts';
 import {aggregate,rsLine,volumeProfile} from './analysis.js';
@@ -10,13 +10,17 @@ import {useDrawings,DrawingToolbar,DrawingLayer,paintDrawing} from './DrawingToo
 import {attachChartWatermark} from './chart-watermark.js';
 import {uploadedRS} from './pine-minervini.js';
 import {isIntraday,formatBarTime,tickTime} from './timeframes.js';
+import {chartAnchor,nearestAverage} from './chart-interactions.js';
+import ChartContextMenu from './ChartContextMenu.jsx';
+import {nearestTimeBar} from './workspace-model.js';
 const timeKey=chartTimeKey;
 const number=(value,format)=>!Number.isFinite(value)?'—':format==='koVolume'?formatVolume(value,'korean'):format==='shares'?formatVolume(value):format==='volume'?Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:2}).format(value):`${value.toLocaleString('ko-KR',{maximumFractionDigits:3})}${format==='percent'?'%':''}`;
 
-export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone,drawingKey,bars,benchmark,interval,range,showRS,showVolume,showProfile,movingAverages,volumeSettings,profileSettings,studies,onRemoveStudy,onEditStudies,onHover,onReady}){
+export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone,drawingKey,bars,benchmark,interval,range,showRS,showVolume,showProfile,movingAverages,volumeSettings,profileSettings,studies,onRemoveStudy,onEditStudies,onHover,onReady,onAlert,syncHub,syncId='main',syncOptions}){
+  const [menu,setMenu]=useState(null),closeMenu=useCallback(()=>setMenu(null),[]);
   const drawing=useDrawings(drawingKey),[drawingApi,setDrawingApi]=useState(null);
   const host=useRef(null),runtime=useRef(null),profileOptions=useRef({...profileSettings,visible:showProfile}),callbacks=useRef({}),[profile,setProfile]=useState([]),[profileHeight,setProfileHeight]=useState(360),[readouts,setReadouts]=useState([]),[paneTops,setPaneTops]=useState({}),[axisWidth,setAxisWidth]=useState(70),[profileWidth,setProfileWidth]=useState(150),[profileSummary,setProfileSummary]=useState(null);
-  callbacks.current={onHover,onReady,onRemoveStudy,onEditStudies,symbol,showTickerWatermark};profileOptions.current={...profileSettings,visible:showProfile};
+  callbacks.current={onHover,onReady,onRemoveStudy,onEditStudies,onAlert,symbol,showTickerWatermark,syncHub,syncId,syncOptions};profileOptions.current={...profileSettings,visible:showProfile};
   const studyKey=JSON.stringify(studies),averageKey=JSON.stringify(movingAverages),volumeKey=JSON.stringify(volumeSettings),profileKey=JSON.stringify(profileSettings),panelCount=Number(showVolume)+Number(showRS&&(rsMode==='uploaded'||benchmark.length>0))+studies.filter(s=>s.visible&&indicatorDefinition(s.type)?.placement==='panel').length;
 
   useEffect(()=>{
@@ -51,16 +55,17 @@ export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone
       });
     };
     state.schedule=update;
-    const crosshair=event=>{const bar=event.seriesData.get(candles);callbacks.current.onHover?.(bar?.close?resolveCandle(state.candleMap,event.time):null);readValues(event);};
+    const crosshair=event=>{const bar=event.seriesData.get(candles);callbacks.current.onHover?.(bar?.close?resolveCandle(state.candleMap,event.time):null);readValues(event);if(callbacks.current.syncOptions?.syncCrosshair)callbacks.current.syncHub?.publish(callbacks.current.syncId,{type:'crosshair',time:event.time??null});};
     const dragged=event=>{if(event.buttons)update();};
-    chart.subscribeCrosshairMove(crosshair);chart.timeScale().subscribeVisibleLogicalRangeChange(update);
+    const doubleClick=event=>{const id=nearestAverage(state,event.point);if(id)callbacks.current.onEditStudies?.(id);};
+    chart.subscribeDblClick(doubleClick);chart.subscribeCrosshairMove(crosshair);chart.timeScale().subscribeVisibleLogicalRangeChange(update);
     const observer=new ResizeObserver(update);observer.observe(container);container.addEventListener('pointerup',update);container.addEventListener('pointermove',dragged);container.addEventListener('wheel',update,{passive:true});
-    callbacks.current.onReady?.({reset:()=>chart.timeScale().fitContent(),screenshot:()=>{
+    const readyApi={reset:()=>chart.timeScale().fitContent(),screenshot:()=>{
       const canvas=chart.takeScreenshot(),ctx=canvas.getContext('2d'),ratio=canvas.width/container.clientWidth;ctx.save();ctx.scale(ratio,ratio);ctx.beginPath();ctx.rect(0,0,container.clientWidth-state.axisWidth,chart.panes()[0].getHeight());ctx.clip();
       for(const b of state.profile){ctx.fillStyle=b.poc?profileOptions.current.pocColor:profileOptions.current.color;ctx.globalAlpha=b.poc ? .5 : b.inValueArea ? .3 : .13;ctx.fillRect(container.clientWidth-state.axisWidth-b.width,b.y1,b.width,Math.max(1,b.y2-b.y1-1));}ctx.globalAlpha=1;for(const row of state.renderedDrawings||[])paintDrawing(ctx,row,chart.timeScale().width());ctx.restore();
       const a=document.createElement('a');a.download='jins-trading-chart.png';a.href=canvas.toDataURL('image/png');a.click();
-    }});
-    return()=>{state.disposed=true;state.drawingListeners.clear();cancelAnimationFrame(state.frame);observer.disconnect();container.removeEventListener('pointerup',update);container.removeEventListener('pointermove',dragged);container.removeEventListener('wheel',update);chart.unsubscribeCrosshairMove(crosshair);chart.timeScale().unsubscribeVisibleLogicalRangeChange(update);watermark.detach();chart.remove();runtime.current=null;callbacks.current.onReady?.(null);};
+    }};state.publicApi=readyApi;callbacks.current.onReady?.(readyApi);
+    return()=>{state.disposed=true;state.drawingListeners.clear();cancelAnimationFrame(state.frame);observer.disconnect();container.removeEventListener('pointerup',update);container.removeEventListener('pointermove',dragged);container.removeEventListener('wheel',update);chart.unsubscribeDblClick(doubleClick);chart.unsubscribeCrosshairMove(crosshair);chart.timeScale().unsubscribeVisibleLogicalRangeChange(update);watermark.detach();chart.remove();runtime.current=null;callbacks.current.onReady?.(null);};
   },[]);
 
   useEffect(()=>{
@@ -106,6 +111,23 @@ export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone
 
   useEffect(()=>{runtime.current?.schedule();},[showProfile,profileKey]);
   useEffect(()=>{runtime.current?.watermark.applyOptions({symbol,showTicker:showTickerWatermark});},[symbol,showTickerWatermark]);
+  useEffect(()=>{setMenu(null);},[drawingKey,interval]);
+  useEffect(()=>{
+    const api=runtime.current;if(!api||!syncHub)return;
+    let applying=false;
+    const unregister=syncHub.register(syncId,event=>{
+      if(api.disposed)return;applying=true;
+      try{if(event.type==='crosshair'&&callbacks.current.syncOptions?.syncCrosshair){const bar=nearestTimeBar(api.data,event.time);if(bar)api.chart.setCrosshairPosition(bar.close,bar.time,api.candles);else api.chart.clearCrosshairPosition();}
+      if(event.type==='range'&&callbacks.current.syncOptions?.syncTime&&event.range&&api.data.length){const from=nearestTimeBar(api.data,event.range.from,{clamp:true}),to=nearestTimeBar(api.data,event.range.to,{clamp:true,endOfDay:true});if(from&&to&&from.time<to.time)api.chart.timeScale().setVisibleRange({from:from.time,to:to.time});}}finally{applying=false;}
+    });
+    const rangeChanged=value=>{if(!applying&&callbacks.current.syncOptions?.syncTime&&value)syncHub.publish(syncId,{type:'range',range:value});};
+    api.chart.timeScale().subscribeVisibleTimeRangeChange(rangeChanged);return()=>{unregister();api.chart.timeScale().unsubscribeVisibleTimeRangeChange(rangeChanged);};
+  },[syncHub,syncId]);
+  function openContext(event){
+    if(event.target.closest('button,input,select'))return;const api=runtime.current;if(!api)return;event.preventDefault();const rect=event.currentTarget.getBoundingClientRect(),x=event.clientX-rect.left,y=event.clientY-rect.top;
+    setMenu({x,y,width:rect.width,height:rect.height,anchor:chartAnchor(api,x,y),average:nearestAverage(api,{x,y})});
+  }
+  function mobileMenu(){const api=runtime.current;if(!api?.data.length)return;const width=host.current.clientWidth,height=host.current.clientHeight,last=api.data.at(-1);setMenu({x:8,y:8,width,height,anchor:{time:typeof last.time==='number'?last.time*1000:Date.parse(last.time+'T00:00:00Z'),price:last.close,dateOnly:typeof last.time==='string'}});}
   const renderReadout=row=><div className="chart-study-readout" key={row.id}><button className="study-readout-name" style={{color:row.color}} onClick={()=>callbacks.current.onEditStudies?.(row.id)}>{row.label}</button><span>{row.values.map(value=><span key={value.name} style={{color:value.color}} title={value.name}>{row.values.length>1?`${value.name} `:''}<b>{value.value}</b></span>)}</span><button className="remove-chart-study" aria-label={`${row.label} 차트에서 제거`} onClick={()=>callbacks.current.onRemoveStudy?.(row.id)}><X size={11}/></button></div>;
-  return <div className="chart-drawing-workspace"><DrawingToolbar drawing={drawing}/><div className="chart-canvas-wrap with-studies" style={{'--chart-axis-width':axisWidth+'px',height:`calc(var(--price-pane-height, 360px) + ${panelCount*120+28}px)`}}><div className="chart-canvas" ref={host}/><div className="chart-overlay-readouts">{readouts.filter(r=>r.pane===0).map(renderReadout)}{showProfile&&renderReadout({id:'volumeProfile',label:'매물대 (추정)',color:profileSettings.color,values:[['POC',profileSummary?.pocPrice],['VAH',profileSummary?.vah],['VAL',profileSummary?.val]].map(([name,value])=>({name,value:number(value),color:name==='POC'?profileSettings.pocColor:profileSettings.color}))})}</div>{readouts.filter(r=>r.pane>0).map(row=><div className="chart-pane-readout" key={row.id} style={{top:(paneTops[row.pane]||0)+6}}>{renderReadout(row)}</div>)}{showProfile&&<svg className="volume-profile" width={profileWidth} height={profileHeight} aria-label="표시 구간 거래량 프로파일 추정"><title>캔들 고저 범위에 거래량을 균등 배분한 추정치</title>{profile.map((b,i)=><rect key={i} x={profileWidth-b.width} y={b.y1} width={b.width} height={Math.max(1,b.y2-b.y1-1)} fill={b.poc?profileSettings.pocColor:profileSettings.color} opacity={b.poc ? .5 : b.inValueArea ? .3 : .13}/>)}</svg>}<DrawingLayer key={drawingKey} api={drawingApi} drawing={drawing}/></div></div>;
+  return <div className="chart-drawing-workspace" onPointerEnter={()=>syncHub?.activate(syncId)} onPointerDownCapture={()=>syncHub?.activate(syncId)}><div className="chart-tools-row"><DrawingToolbar drawing={drawing}/><button className="mobile-chart-menu" onClick={mobileMenu}>차트 메뉴</button></div><div className="chart-canvas-wrap with-studies" onContextMenu={openContext} style={{'--chart-axis-width':axisWidth+'px',height:`calc(var(--price-pane-height, 360px) + ${panelCount*120+28}px)`}}><div className="chart-canvas" ref={host}/><div className="chart-overlay-readouts">{readouts.filter(r=>r.pane===0).map(renderReadout)}{showProfile&&renderReadout({id:'volumeProfile',label:'매물대 (추정)',color:profileSettings.color,values:[['POC',profileSummary?.pocPrice],['VAH',profileSummary?.vah],['VAL',profileSummary?.val]].map(([name,value])=>({name,value:number(value),color:name==='POC'?profileSettings.pocColor:profileSettings.color}))})}</div>{readouts.filter(r=>r.pane>0).map(row=><div className="chart-pane-readout" key={row.id} style={{top:(paneTops[row.pane]||0)+6}}>{renderReadout(row)}</div>)}{showProfile&&<svg className="volume-profile" width={profileWidth} height={profileHeight} aria-label="표시 구간 거래량 프로파일 추정"><title>캔들 고저 범위에 거래량을 균등 배분한 추정치</title>{profile.map((b,i)=><rect key={i} x={profileWidth-b.width} y={b.y1} width={b.width} height={Math.max(1,b.y2-b.y1-1)} fill={b.poc?profileSettings.pocColor:profileSettings.color} opacity={b.poc ? .5 : b.inValueArea ? .3 : .13}/>)}</svg>}{menu&&<ChartContextMenu menu={menu} onClose={closeMenu} drawingReady={drawing.ready&&drawing.doc.items.length<200} onLine={()=>{const row={id:crypto.randomUUID(),type:'horizontal',points:[menu.anchor],color:drawing.color,width:drawing.width,text:'',visible:true};drawing.commit(doc=>({...doc,items:[...doc.items,row]}));drawing.setSelectedId(row.id);drawing.setTool('select');}} onAlert={()=>callbacks.current.onAlert?.(menu.anchor.price)} onEdit={()=>callbacks.current.onEditStudies?.(menu.average||'averages')} onReset={()=>runtime.current?.publicApi.reset()} onScreenshot={()=>runtime.current?.publicApi.screenshot()}/>}<DrawingLayer key={drawingKey} api={drawingApi} drawing={drawing}/></div></div>;
 }

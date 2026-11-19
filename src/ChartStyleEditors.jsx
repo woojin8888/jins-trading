@@ -9,6 +9,9 @@ export function NumberSetting({label,value,min=1,max=500,onChange}){
   return <label className="study-parameter">{label}<input type="number" value={draft} min={min} max={max} aria-invalid={!!error} onChange={e=>setDraft(e.target.value)} onBlur={commit} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();e.currentTarget.blur();}}}/>{error&&<small role="alert">{error}</small>}</label>;
 }
 export function LineStyle({label='선',color,width,onColor,onWidth}){return <><label className="study-parameter">{label} 색상<input type="color" aria-label={`${label} 색상`} value={color} onChange={e=>onColor(e.target.value)}/></label><label className="study-parameter">{label} 두께<select aria-label={`${label} 두께`} value={width} onChange={e=>onWidth(Number(e.target.value))}>{[1,2,3,4].map(n=><option key={n} value={n}>{n}px{n===3?' · 굵게':''}</option>)}</select></label></>;}
+export function MovingAverageQuickEditor({row,onChange}){
+  return <div className="quick-average-editor"><p>변경한 값은 선택한 이동평균선과 모든 분할 차트에 바로 적용됩니다.</p><div className="study-parameters"><label className="study-parameter">종류<select value={row.type} onChange={e=>onChange({type:e.target.value})}>{MA_TYPES.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label><NumberSetting label="기간 (봉)" value={row.period} onChange={period=>onChange({period})}/><label className="study-parameter">기준 가격<select value={row.source} onChange={e=>onChange({source:e.target.value})}>{MA_SOURCES.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label><LineStyle label={`${row.period}봉선`} color={row.color} width={row.width} onColor={color=>onChange({color})} onWidth={width=>onChange({width})}/></div></div>;
+}
 export function MovingAverageEditor({rows,onChange}){
   const [message,setMessage]=useState('');
   function patch(id,update){onChange(previous=>previous.map(row=>row.id===id?{...row,...update}:row));}

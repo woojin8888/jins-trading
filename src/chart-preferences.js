@@ -1,4 +1,3 @@
-import {useCallback,useEffect,useState} from 'react';
 import {MAX_STUDIES,normalizeStudy} from './indicators.js';
 import {MA_TYPES,MA_SOURCES} from './technical-math.js';
 export const CHART_SETTINGS_KEY='jins-trading:chart-preferences:v1';
@@ -23,11 +22,4 @@ export function normalizePreferences(raw){
   return {...defaults,...Object.fromEntries(['showRS','showVolume','showProfile','autoRefresh','showTickerWatermark'].map(key=>[key,typeof raw[key]==='boolean'?raw[key]:defaults[key]])),movingAverages,studies,rsMode:raw.rsMode==='benchmark'?'benchmark':'uploaded',
     volume:{format:raw.version<3?'korean':['shares','compact','korean'].includes(v.format)?v.format:'korean',mode:v.mode==='line'?'line':'bars',averageVisible:v.averageVisible!==false,averagePeriod:integer(v.averagePeriod,1,500,20),averageType:['sma','ema'].includes(v.averageType)?v.averageType:'sma',averageColor:color(v.averageColor,defaults.volume.averageColor),averageWidth:integer(v.averageWidth,1,4,1)},
     profile:{mode:p.mode==='recent'?'recent':'visible',rows:integer(p.rows,8,120,32),width:integer(p.width,60,260,150),valueArea:integer(p.valueArea,1,100,70),fixedBars:integer(p.fixedBars,10,2000,150),color:color(p.color,defaults.profile.color),pocColor:color(p.pocColor,defaults.profile.pocColor),showPOC:p.showPOC!==false,showVA:p.showVA!==false}};
-}
-function readPreferences(){try{return normalizePreferences(JSON.parse(localStorage.getItem(CHART_SETTINGS_KEY)||'null'));}catch{return defaultChartPreferences();}}
-export function useChartPreferences(){
-  const [preferences,setPreferences]=useState(readPreferences),[storageError,setStorageError]=useState('');
-  useEffect(()=>{try{localStorage.setItem(CHART_SETTINGS_KEY,JSON.stringify(preferences));setStorageError('');}catch{setStorageError('차트 설정을 브라우저에 저장하지 못했습니다. 현재 화면에는 계속 적용됩니다.');}},[preferences]);
-  const setField=useCallback((key,value)=>setPreferences(previous=>({...previous,[key]:typeof value==='function'?value(previous[key]):value})),[]);
-  return {preferences,setField,storageError};
 }
