@@ -1,6 +1,7 @@
 import {INTRADAY,parseIntraday} from './intraday-data.js';
 import {parseDailyHistory,needsLatestSession,mergeLatestSession,historyQuality} from './history-data.js';
 import {RANK_SORTS,scanRequest,scanRows,koreanStock} from './rankings.js';
+import {searchKoreanStocks,validateBoard,KOREAN_BOARDS} from './korean-directory.js';
 const HEADERS={'User-Agent':'Mozilla/5.0','Accept':'application/json'};
 const json=(data,status=200,fresh=false)=>Response.json(data,{status,headers:{'Cache-Control':status===200&&!fresh?'public, max-age=0, s-maxage=30':'no-store'}});
 export function normalizeSymbol(raw,market){
@@ -49,28 +50,31 @@ async function intraday(symbol,interval){
   }
   throw failure;
 }
-async function rankedStocks(market,sort='value',offset=0){
-  const response=await fetch(`https://scanner.tradingview.com/${market==='kr'?'korea':'america'}/scan`,{method:'POST',headers:{...HEADERS,'Content-Type':'application/json'},body:JSON.stringify(scanRequest(market,sort,offset)),signal:AbortSignal.timeout(12000)});
+async function rankedStocks(market,sort='value',offset=0,board='all'){
+  const response=await fetch(`https://scanner.tradingview.com/${market==='kr'?'korea':'america'}/scan`,{method:'POST',headers:{...HEADERS,'Content-Type':'application/json'},body:JSON.stringify(scanRequest(market,sort,offset,board)),signal:AbortSignal.timeout(12000)});
   if(!response.ok)throw Error('종목 목록을 불러오지 못했습니다. 잠시 후 새로고침해 주세요.');
   const body=await response.json(),rows=scanRows(body.data,market);
   if(market==='kr')await Promise.all(rows.filter(row=>!koreanStock(row.ticker)).map(async row=>{const name=await koreanName(row.symbol);if(name)row.name=name;}));
-  return {rows,total:body.totalCount,offset,hasMore:rows.length>0&&offset+rows.length<body.totalCount,sort,fetchedAt:new Date().toISOString(),source:`TradingView Stock Screener · ${RANK_SORTS[sort].label} · 개별주식`,currency:market==='kr'?'KRW':'USD'};
+  return {rows,market,board,total:body.totalCount,offset,hasMore:rows.length>0&&offset+rows.length<body.totalCount,sort,fetchedAt:new Date().toISOString(),source:`TradingView Stock Screener · ${RANK_SORTS[sort].label} · 개별주식`,currency:market==='kr'?'KRW':'USD'};
 }
-async function universe(market){
-  const result=await rankedStocks(market),rows=result.rows;
+async function universe(market,board='all'){
+  const result=await rankedStocks(market,'value',0,board),rows=result.rows;
   const scores=rows.filter(r=>Number.isFinite(r.return1y)).map(r=>r.return1y).sort((a,b)=>a-b);
   for(const row of rows)row.rsRating=Number.isFinite(row.return1y)&&scores.length>1?Math.round(1+98*scores.filter(n=>n<row.return1y).length/(scores.length-1)):null;
-  return {rows,total:result.total,fetchedAt:result.fetchedAt,source:'TradingView Stock Screener · 거래대금 상위 100개 개별주식',rsMethod:'거래대금 TOP100 안의 1년 수익률 백분위. IBD 공식 RS Rating이 아닙니다.'};
+  return {rows,market,board,total:result.total,fetchedAt:result.fetchedAt,source:`TradingView Stock Screener · ${market==='kr'?KOREAN_BOARDS[board]+' · ':''}거래대금 상위 100개 개별주식`,rsMethod:'거래대금 TOP100 안의 1년 수익률 백분위. IBD 공식 RS Rating이 아닙니다.'};
 }
 export async function routeMarket(url){
   const market=url.searchParams.get('market')==='kr'?'kr':'us',reply=(data,status=200)=>json(data,status,url.searchParams.has('fresh'));
   try{
     const action=url.searchParams.get('action')||'history';
-    if(action==='universe')return reply(await universe(market));
+    const board=url.searchParams.get('board')||'all';
+    try{validateBoard(market,board);}catch(error){return reply({error:error.message},400);}
+    if(action==='search'){if(market!=='kr')return reply({error:'한국 종목명·코드 검색을 선택하세요.'},400);try{return reply(searchKoreanStocks(url.searchParams.get('q')||'',board));}catch(error){return reply({error:error.message},400);}}
+    if(action==='universe')return reply(await universe(market,board));
     if(action==='rankings'){
       const sort=url.searchParams.get('sort')||'value',offset=Number(url.searchParams.get('offset')||0);
-      try{scanRequest(market,sort,offset);}catch(error){return reply({error:error.message},400);}
-      return reply(await rankedStocks(market,sort,offset));
+      try{scanRequest(market,sort,offset,board);}catch(error){return reply({error:error.message},400);}
+      return reply(await rankedStocks(market,sort,offset,board));
     }
     if(action!=='history')return reply({error:'지원하지 않는 조회입니다.'},400);
     let symbol;

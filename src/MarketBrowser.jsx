@@ -2,6 +2,7 @@ import React,{useEffect,useMemo,useState} from 'react';
 import {ChevronDown,LoaderCircle,RefreshCw,Star} from 'lucide-react';
 import {delayLabel,formatQuoteTime} from './quote-info.js';
 import {marketData} from './backend.js';
+import KoreanBoardSelect from './KoreanBoardSelect.jsx';
 export const RANKING_OPTIONS=[['value','거래대금순'],['marketCap','시가총액순'],['gainers','상승률순'],['losers','하락률순'],['volume','거래량순']];
 const price=(n,market)=>Number.isFinite(n)?n.toLocaleString('ko-KR',{maximumFractionDigits:market==='kr'?0:2}):'—';
 const percent=n=>Number.isFinite(n)?`${n>0?'+':''}${n.toFixed(2)}%`:'—';
@@ -15,16 +16,16 @@ export function marketAmount(n,market){
   }
   return '$'+Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:2}).format(n);
 }
-function RankingList({market,sort,onSelect,symbol,watchlist,onWatch,ready,onQuotes,forceRefresh}){
+function RankingList({market,sort,board='all',onSelect,symbol,watchlist,onWatch,ready,onQuotes,forceRefresh}){
   const [offset,setOffset]=useState(0),[rows,setRows]=useState([]),[info,setInfo]=useState(null),[busy,setBusy]=useState(true),[error,setError]=useState(''),[retry,setRetry]=useState(0);
   useEffect(()=>{
     const controller=new AbortController();setBusy(true);setError('');
-    marketData({action:'rankings',market,sort,offset},controller.signal,(retry>0||forceRefresh)).then(data=>{
+    marketData({action:'rankings',market,sort,offset,board:market==='kr'?board:'all'},controller.signal,(retry>0||forceRefresh)).then(data=>{
       if(controller.signal.aborted)return;
       setRows(previous=>[...new Map([...(offset?previous:[]),...data.rows].map(row=>[row.symbol,row])).values()]);setInfo(data);onQuotes?.(data.rows);
     }).catch(e=>{if(!controller.signal.aborted)setError(e.message);}).finally(()=>{if(!controller.signal.aborted)setBusy(false);});
     return()=>controller.abort();
-  },[market,sort,offset,retry,onQuotes,forceRefresh]);
+  },[market,sort,board,offset,retry,onQuotes,forceRefresh]);
   const saved=useMemo(()=>new Set(watchlist.map(row=>row.symbol)),[watchlist]);
   return <><div className="ranking-caption"><span>{info?`전체 ${info.total.toLocaleString()}개 · ${rows.length.toLocaleString()}개 표시`:'시장 종목 조회 중'}</span><span>{market==='kr'?'원화 기준':'USD 기준'}</span></div>
     <div className="ranking-columns"><span>종목 / 정렬 지표</span><span>최근 가격 / 등락률</span></div>
@@ -39,7 +40,7 @@ function RankingList({market,sort,onSelect,symbol,watchlist,onWatch,ready,onQuot
       {!busy&&!error&&info?.hasMore&&<button className="ranking-more" onClick={()=>setOffset(info.offset+100)}><ChevronDown size={15}/>다음 100개 더 보기</button>}
     </div><p className="ranking-source">{market==='kr'?'코스피·코스닥':'NASDAQ·NYSE·AMEX'} 개별주식 기준 · ETF 제외. TradingView Screener · {info?.rows?.length?[...new Set(info.rows.map(delayLabel))].join(' / '):'지연 시세'}. 최근 1분봉은 각 가격의 도움말에서 확인합니다. {info?.fetchedAt&&`조회 ${new Date(info.fetchedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}`}</p></>;
 }
-export default function MarketBrowser({market,refreshTick,...props}){
+export default function MarketBrowser({market,refreshTick,board='all',onBoard,boardReady,...props}){
   const [sort,setSort]=useState('value'),[refresh,setRefresh]=useState(0);
-  return <section className="market-browser"><div className="section-heading"><h3>{market==='kr'?'한국':'미국'} 종목 목록</h3><button className="icon-button" aria-label="시장 종목 목록 새로고침" onClick={()=>setRefresh(n=>n+1)}><RefreshCw size={15}/></button></div><div className="ranking-sort"><label htmlFor="market-ranking-sort">정렬</label><select id="market-ranking-sort" value={sort} onChange={e=>setSort(e.target.value)}>{RANKING_OPTIONS.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></div><RankingList key={`${market}:${sort}:${refresh}:${refreshTick}`} market={market} sort={sort} forceRefresh={refresh>0||refreshTick>0} {...props}/></section>;
+  return <section className="market-browser"><div className="section-heading"><h3>{market==='kr'?'한국':'미국'} 종목 목록</h3><button className="icon-button" aria-label="시장 종목 목록 새로고침" onClick={()=>setRefresh(n=>n+1)}><RefreshCw size={15}/></button></div>{market==='kr'&&<KoreanBoardSelect value={board} onChange={onBoard} disabled={!boardReady}/>}<div className="ranking-sort"><label htmlFor="market-ranking-sort">정렬</label><select id="market-ranking-sort" value={sort} onChange={e=>setSort(e.target.value)}>{RANKING_OPTIONS.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></div><RankingList key={`${market}:${board}:${sort}:${refresh}:${refreshTick}`} board={board} market={market} sort={sort} forceRefresh={refresh>0||refreshTick>0} {...props}/></section>;
 }
