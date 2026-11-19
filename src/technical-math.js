@@ -16,8 +16,8 @@ export function movingAverageValues(type,values,n,volumes=[]){
 }
 export function sourceValue(bar,source='close'){if(source==='hl2')return (bar.high+bar.low)/2;if(source==='hlc3')return (bar.high+bar.low+bar.close)/3;if(source==='ohlc4')return (bar.open+bar.high+bar.low+bar.close)/4;return bar[source]??bar.close;}
 export function movingAveragePoints(config,bars){const values=movingAverageValues(config.type,bars.map(b=>sourceValue(b,config.source)),config.period,bars.map(b=>b.volume));return values.flatMap((value,i)=>Number.isFinite(value)?[{time:bars[i].time,value}]:[]);}
-export function formatVolume(value,mode='shares'){if(!Number.isFinite(value))return '—';if(mode==='korean'){if(value>=1e8)return (value/1e8).toLocaleString('ko-KR',{maximumFractionDigits:2})+'억주';if(value>=1e4)return (value/1e4).toLocaleString('ko-KR',{maximumFractionDigits:1})+'만주';if(value>=1e3)return (value/1e3).toLocaleString('ko-KR',{maximumFractionDigits:1})+'천주';}
-  return mode==='compact'?Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:2}).format(value):`${Math.round(value).toLocaleString('ko-KR')}주`;}
+export function formatVolume(value,mode='shares',unit='주'){if(!Number.isFinite(value))return '—';if(mode==='korean'){if(value>=1e8)return (value/1e8).toLocaleString('ko-KR',{maximumFractionDigits:2})+'억'+unit;if(value>=1e4)return (value/1e4).toLocaleString('ko-KR',{maximumFractionDigits:1})+'만'+unit;if(value>=1e3)return (value/1e3).toLocaleString('ko-KR',{maximumFractionDigits:1})+'천'+unit;}
+  return mode==='compact'?Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:2}).format(value):`${Math.round(value).toLocaleString('ko-KR')}${unit}`;}
 export function profileValueArea(bins,percent=70){
   if(!bins.length)return null;let poc=0;bins.forEach((bin,i)=>{if(bin.volume>bins[poc].volume)poc=i;});
   const total=bins.reduce((sum,b)=>sum+b.volume,0);if(!(total>0))return null;

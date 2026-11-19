@@ -1,5 +1,6 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.119.0';
 import {evaluateAlert,ALERT_TYPES} from './shared/alert-engine.js';
+import {quoteUnit} from './shared/instruments.js';
 const url=Deno.env.get('SUPABASE_URL')!,serviceKey=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const db=createClient(url,serviceKey,{auth:{persistSession:false,autoRefreshToken:false}});
 const encoder=new TextEncoder();
@@ -15,7 +16,7 @@ Deno.serve(async req=>{
  async function process(){let group;while((group=jobs.shift())){
    let history;try{const first=group[0],params=new URLSearchParams({action:'history',market:first.market,symbol:first.symbol,range:'2y',fresh:String(Date.now())});const response=await fetch('https://jins-trading.vercel.app/api/market?'+params,{signal:AbortSignal.timeout(18000)});if(!response.ok)throw Error('시세 조회 실패 '+response.status);history=await response.json();cache.set(first.symbol,history);}catch(error){for(const rule of group)await db.from('trading_alerts').update({last_error:String(error.message).slice(0,300),last_checked:new Date().toISOString()}).eq('id',rule.id);failed+=group.length;continue;}
    for(const rule of group){try{const result=evaluateAlert(rule,history);if(result.trigger){
-     const message=`${rule.name||rule.symbol} · ${ALERT_TYPES[rule.kind]} ${rule.kind==='ma_cross'?rule.period+'일':rule.threshold} · 확인값 ${result.value.toLocaleString('ko-KR',{maximumFractionDigits:3})}`;
+     const message=`${rule.name||rule.symbol} · ${ALERT_TYPES[rule.kind]} ${rule.kind==='ma_cross'?rule.period+'일':rule.threshold} · 확인값 ${result.value.toLocaleString('ko-KR',{maximumFractionDigits:6})} ${rule.kind==='volume_above'?'배':rule.kind==='rs_above'?'RS':quoteUnit(rule.symbol,history.currency)}`;
      const {error}=await db.rpc('trading_finish_alert',{rule_id:rule.id,condition_value:result.condition,source_time:result.sourceAt,bar_time:String(result.barAt),notification_message:message,notify:true});if(error)throw error;triggered++;
    }else{const {error}=await db.rpc('trading_finish_alert',{rule_id:rule.id,condition_value:result.condition,source_time:result.sourceAt,bar_time:String(result.barAt),notification_message:'',notify:false});if(error)throw error;}checked++;
    }catch(error){failed++;await db.from('trading_alerts').update({last_error:String(error.message).slice(0,300),last_checked:new Date().toISOString()}).eq('id',rule.id);}}

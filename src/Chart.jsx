@@ -14,13 +14,13 @@ import {chartAnchor,nearestAverage} from './chart-interactions.js';
 import ChartContextMenu from './ChartContextMenu.jsx';
 import {nearestTimeBar} from './workspace-model.js';
 const timeKey=chartTimeKey;
-const number=(value,format)=>!Number.isFinite(value)?'—':format==='koVolume'?formatVolume(value,'korean'):format==='shares'?formatVolume(value):format==='volume'?Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:2}).format(value):`${value.toLocaleString('ko-KR',{maximumFractionDigits:3})}${format==='percent'?'%':''}`;
+const number=(value,format,unit='주',precision=3)=>!Number.isFinite(value)?'—':format==='koVolume'?formatVolume(value,'korean',unit):format==='shares'?formatVolume(value,'shares',unit):format==='volume'?Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:2}).format(value):`${value.toLocaleString('ko-KR',{maximumFractionDigits:Math.max(3,precision)})}${format==='percent'?'%':''}`;
 
-export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone,drawingKey,bars,benchmark,interval,range,showRS,showVolume,showProfile,movingAverages,volumeSettings,profileSettings,studies,onRemoveStudy,onEditStudies,onHover,onReady,onAlert,syncHub,syncId='main',syncOptions}){
+export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone,drawingKey,bars,benchmark,interval,range,showRS,showVolume,showProfile,movingAverages,volumeSettings,profileSettings,studies,onRemoveStudy,onEditStudies,onHover,onReady,onAlert,volumeUnit='주',pricePrecision,syncHub,syncId='main',syncOptions}){
   const [menu,setMenu]=useState(null),closeMenu=useCallback(()=>setMenu(null),[]);
   const drawing=useDrawings(drawingKey),[drawingApi,setDrawingApi]=useState(null);
   const host=useRef(null),runtime=useRef(null),profileOptions=useRef({...profileSettings,visible:showProfile}),callbacks=useRef({}),[profile,setProfile]=useState([]),[profileHeight,setProfileHeight]=useState(360),[readouts,setReadouts]=useState([]),[paneTops,setPaneTops]=useState({}),[axisWidth,setAxisWidth]=useState(70),[profileWidth,setProfileWidth]=useState(150),[profileSummary,setProfileSummary]=useState(null);
-  callbacks.current={onHover,onReady,onRemoveStudy,onEditStudies,onAlert,symbol,showTickerWatermark,syncHub,syncId,syncOptions};profileOptions.current={...profileSettings,visible:showProfile};
+  callbacks.current={onHover,onReady,onRemoveStudy,onEditStudies,onAlert,symbol,showTickerWatermark,volumeUnit,pricePrecision,syncHub,syncId,syncOptions};profileOptions.current={...profileSettings,visible:showProfile};
   const studyKey=JSON.stringify(studies),averageKey=JSON.stringify(movingAverages),volumeKey=JSON.stringify(volumeSettings),profileKey=JSON.stringify(profileSettings),panelCount=Number(showVolume)+Number(showRS&&(rsMode==='uploaded'||benchmark.length>0))+studies.filter(s=>s.visible&&indicatorDefinition(s.type)?.placement==='panel').length;
 
   useEffect(()=>{
@@ -31,7 +31,7 @@ export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone
     const state={chart,candles,watermark,series:[],groups:[],data:[],candleMap:new Map(),previous:null,profileLines:[],frame:0,profile:[],axisWidth:70,disposed:false,drawingListeners:new Set()};runtime.current=state;setDrawingApi(state);
     function readValues(event){
       const lastTime=state.data.at(-1)?.time;
-      setReadouts(state.groups.map(group=>({...group,values:group.members.map(member=>{const last=member.data.at(-1),value=event?.time?event.seriesData.get(member.api)?.value:last&&(last.time===lastTime||member.confirmed)?last.value:null,point=member.pointColors?.get(event?.time?timeKey(event.time):lastTime);return {name:member.name,value:number(value,member.format),color:point||member.color};})})));
+      setReadouts(state.groups.map(group=>({...group,values:group.members.map(member=>{const last=member.data.at(-1),value=event?.time?event.seriesData.get(member.api)?.value:last&&(last.time===lastTime||member.confirmed)?last.value:null,point=member.pointColors?.get(event?.time?timeKey(event.time):lastTime);return {name:member.name,value:number(value,member.format,callbacks.current.volumeUnit,callbacks.current.pricePrecision??3),color:point||member.color};})})));
     }
     state.readValues=readValues;
     const update=()=>{
@@ -75,13 +75,13 @@ export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone
     const preserve=nextLogicalRange(visible,{dataChanged:previous?.bars!==bars,intervalChanged:previous?.interval!==interval,rangeChanged:previous?.range!==range,oldLength:state.data.length,newLength:data.length});
     const paneHeights=new Map(state.groups.filter(group=>group.pane>0).map(group=>[group.id,group.members[0].api.getPane().getHeight()]));
     for(const series of state.series)chart.removeSeries(series);state.series=[];state.groups=[];state.data=data;state.candleMap=new Map(data.map(bar=>[bar.time,bar]));
-    candles.applyOptions({priceFormat:{type:'price',precision:data.at(-1).close<10?3:2,minMove:data.at(-1).close<10?.001:.01}});candles.setData(data);
+    candles.applyOptions({priceFormat:{type:'price',precision:pricePrecision??(data.at(-1).close<10?3:2),minMove:10**-(pricePrecision??(data.at(-1).close<10?3:2))}});candles.setData(data);
     let nextPane=1;
     function add(spec,pane,bounds){
       const options={color:spec.color,lineWidth:spec.width||1,priceLineVisible:spec.priceLine===true,lastValueVisible:pane>0,title:'',crosshairMarkerVisible:true};
       if(spec.format==='volume')options.priceFormat={type:'volume'};
-      if(spec.format==='koVolume')options.priceFormat={type:'custom',minMove:1,formatter:value=>formatVolume(value,'korean')};
-      if(spec.format==='shares')options.priceFormat={type:'custom',minMove:1,formatter:value=>formatVolume(value)};
+      if(spec.format==='koVolume')options.priceFormat={type:'custom',minMove:1,formatter:value=>formatVolume(value,'korean',volumeUnit)};
+      if(spec.format==='shares')options.priceFormat={type:'custom',minMove:1,formatter:value=>formatVolume(value,'shares',volumeUnit)};
       if(spec.format==='percent')options.priceFormat={type:'custom',minMove:.001,formatter:value=>`${value.toFixed(2)}%`};
       if(bounds)options.autoscaleInfoProvider=()=>({priceRange:{minValue:bounds[0],maxValue:bounds[1]}});
       const api=chart.addSeries(spec.kind==='histogram'?HistogramSeries:LineSeries,options,pane);
@@ -107,7 +107,7 @@ export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone
     else if(range==='ALL')chart.timeScale().fitContent();
     else if(typeof data.at(-1).time==='number'){chart.timeScale().setVisibleRange({from:Math.max(data[0].time,data.at(-1).time-Number(range)*86400),to:data.at(-1).time});}else{const last=new Date(data.at(-1).time+'T00:00:00Z'),from=new Date(last.getTime()-Number(range)*86400000).toISOString().slice(0,10);chart.timeScale().setVisibleRange({from:from<data[0].time?data[0].time:from,to:data.at(-1).time});}
     state.previous={bars,interval,range};state.readValues();state.schedule();callbacks.current.onHover?.(null);
-  },[bars,benchmark,interval,range,showRS,showVolume,rsMode,rsAsOf,timeZone,averageKey,volumeKey,studyKey]);
+  },[bars,benchmark,interval,range,showRS,showVolume,rsMode,rsAsOf,timeZone,pricePrecision,volumeUnit,averageKey,volumeKey,studyKey]);
 
   useEffect(()=>{runtime.current?.schedule();},[showProfile,profileKey]);
   useEffect(()=>{runtime.current?.watermark.applyOptions({symbol,showTicker:showTickerWatermark});},[symbol,showTickerWatermark]);
@@ -117,8 +117,8 @@ export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone
     let applying=false;
     const unregister=syncHub.register(syncId,event=>{
       if(api.disposed)return;applying=true;
-      try{if(event.type==='crosshair'&&callbacks.current.syncOptions?.syncCrosshair){const bar=nearestTimeBar(api.data,event.time);if(bar)api.chart.setCrosshairPosition(bar.close,bar.time,api.candles);else api.chart.clearCrosshairPosition();}
-      if(event.type==='range'&&callbacks.current.syncOptions?.syncTime&&event.range&&api.data.length){const from=nearestTimeBar(api.data,event.range.from,{clamp:true}),to=nearestTimeBar(api.data,event.range.to,{clamp:true,endOfDay:true});if(from&&to&&from.time<to.time)api.chart.timeScale().setVisibleRange({from:from.time,to:to.time});}}finally{applying=false;}
+      try{if(event.type==='crosshair'&&callbacks.current.syncOptions?.syncCrosshair){const bar=nearestTimeBar(api.data,event.time,{timeZone:api.timeZone});if(bar)api.chart.setCrosshairPosition(bar.close,bar.time,api.candles);else api.chart.clearCrosshairPosition();}
+      if(event.type==='range'&&callbacks.current.syncOptions?.syncTime&&event.range&&api.data.length){const from=nearestTimeBar(api.data,event.range.from,{clamp:true,timeZone:api.timeZone}),to=nearestTimeBar(api.data,event.range.to,{clamp:true,endOfDay:true,timeZone:api.timeZone});if(from&&to&&from.time<to.time)api.chart.timeScale().setVisibleRange({from:from.time,to:to.time});}}finally{applying=false;}
     });
     const rangeChanged=value=>{if(!applying&&callbacks.current.syncOptions?.syncTime&&value)syncHub.publish(syncId,{type:'range',range:value});};
     api.chart.timeScale().subscribeVisibleTimeRangeChange(rangeChanged);return()=>{unregister();api.chart.timeScale().unsubscribeVisibleTimeRangeChange(rangeChanged);};

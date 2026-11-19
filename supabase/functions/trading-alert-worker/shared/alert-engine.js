@@ -1,10 +1,13 @@
+import {isMarket,hasVolume} from './instruments.js';
+import {validMarketSymbol} from './market-selection.js';
 import {sma,mean} from './analysis.js';
 import {uploadedRS} from './pine-minervini.js';
 import {completedAnalysisBars} from './timeframes.js';
 export const ALERT_TYPES={price_above:'가격 이상 도달',price_below:'가격 이하 도달',ma_cross:'종가가 SMA 상향 돌파',volume_above:'거래량 / 직전 20일 평균',rs_above:'업로드 RS 기준 이상'};
 export function validateAlert(input){
   if(!Object.hasOwn(ALERT_TYPES,input.kind))throw Error('지원하지 않는 알림 조건입니다.');
-  if(!['us','kr'].includes(input.market)||!(input.market==='us'?/^[A-Z][A-Z0-9.\-]{0,11}$/:/^\d[A-Z0-9]{5}\.(KS|KQ)$/).test(input.symbol))throw Error('종목 코드를 확인하세요.');
+  if(!isMarket(input.market)||!validMarketSymbol(input.symbol,input.market))throw Error('종목 코드를 확인하세요.');
+  if(input.kind==='volume_above'&&!hasVolume(input.symbol))throw Error('이 자산은 신뢰할 수 있는 거래량을 제공하지 않습니다.');
   const threshold=Number(input.threshold),period=Number(input.period??20);
   if(!Number.isFinite(threshold)||threshold<=0||threshold>1e12)throw Error('알림 기준은 0보다 큰 숫자로 입력하세요.');
   if(!Number.isInteger(period)||period<1||period>500)throw Error('이동평균 기간은 1~500봉으로 입력하세요.');
