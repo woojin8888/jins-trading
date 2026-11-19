@@ -6,7 +6,7 @@ import {scanRequest,scanRows,SCAN_COLUMNS} from '../server/rankings.js';
 import {parseDailyHistory} from '../server/history-data.js';
 import {parseIntraday} from '../server/intraday-data.js';
 import {normalizeWorkspace,nearestTimeBar} from '../src/workspace-model.js';
-import {searchInstruments} from '../server/global-data.js';
+import {searchInstruments,globalAssetRows} from '../server/global-data.js';
 import {validateAlert} from '../src/alert-engine.js';
 import {formatVolume} from '../src/technical-math.js';
 import {importWatchCSV,exportWatchCSV} from '../src/watchlist-csv.js';
@@ -71,4 +71,8 @@ test('Sydney daily/intraday synchronization uses the exchange date rather than t
  const bars=[{time:sec('2026-11-18T23:00:00Z'),close:10},{time:sec('2026-11-19T00:00:00Z'),close:11}];assert.equal(nearestTimeBar(bars,'2026-11-19',{timeZone:'Australia/Sydney'}),bars[0]);assert.equal(nearestTimeBar(bars,'2026-11-19',{timeZone:'Australia/Sydney',endOfDay:true}),bars[1]);
  const daily=[{time:'2026-11-18'},{time:'2026-11-19'}];assert.equal(nearestTimeBar(daily,bars[0].time,{timeZone:'Australia/Sydney'}),daily[1]);
  const restored=normalizeWorkspace({panes:[{market:'fx',interval:'1h',symbols:{fx:'KRW=X'}},{market:'commodities',interval:'D',symbols:{commodities:'GC=F'}}]});assert.equal(restored.panes[0].market,'fx');assert.equal(restored.panes[1].symbols.commodities,'GC=F');assert.deepEqual(normalizeWorkspace(restored),restored);
+});
+test('an asset list does not present an older candle close with a newer missing-quote timestamp',async t=>{
+ const original=global.fetch;t.after(()=>{global.fetch=original;});global.fetch=async url=>{const symbol=decodeURIComponent(new URL(url).pathname.split('/').at(-1)),raw=source(symbol,expectedCurrencies(symbol)[0],'America/New_York');delete raw.meta.regularMarketPrice;return Response.json({chart:{result:[raw]}});};
+ const result=await globalAssetRows('commodities');assert.equal(result.rows.length,6);assert.ok(result.rows.every(row=>row.price===null&&row.error));
 });

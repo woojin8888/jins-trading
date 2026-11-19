@@ -17,7 +17,7 @@ export async function searchInstruments(query,market){
 export async function assetQuote(asset){
  const existing=cache.get(asset.symbol);if(existing&&Date.now()-existing.time<30000)return existing.value;
  const response=await fetch('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(asset.symbol)+'?range=5d&interval=1d&includePrePost=false',{headers,signal:AbortSignal.timeout(10000)});if(!response.ok)throw Error('시세 응답 '+response.status);
- const body=await response.json(),data=parseDailyHistory(body.chart?.result?.[0],asset.symbol),last=data.bars.at(-1),previous=data.bars.at(-2),price=data.quote.price??last?.close;
+ const body=await response.json(),data=parseDailyHistory(body.chart?.result?.[0],asset.symbol),last=data.bars.at(-1),previous=data.bars.at(-2),price=data.quote.price;
  if(!Number.isFinite(price)||!data.quote.asOf)throw Error('가격 또는 기준 시각이 없습니다.');
  const row={...asset,ticker:asset.symbol,price,change:previous&&previous.close!==0?(price/previous.close-1)*100:null,precision:data.quote.precision,currency:data.meta.currency,provider:'Yahoo Finance',asOf:data.quote.asOf,quoteBarAt:data.quote.asOf,barAt:data.quote.asOf,delaySeconds:null,volume:last?.volume??null};cache.set(asset.symbol,{time:Date.now(),value:row});while(cache.size>100)cache.delete(cache.keys().next().value);return row;
 }
