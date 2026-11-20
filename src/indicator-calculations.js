@@ -1,4 +1,5 @@
 import {rollingMean,emaValues,rmaValues,movingAverageValues} from './technical-math.js';
+import {trendLearning} from './trend-learning.js';
 const avg=values=>values.reduce((a,b)=>a+b,0)/values.length;
 export function rsiValues(bars,n){
   let gains=0,losses=0,averageGain=null,averageLoss=null;
@@ -6,6 +7,7 @@ export function rsiValues(bars,n){
 }
 export function atrValues(bars,n){let value=null,seed=[];return bars.map((b,i)=>{if(!i)return null;const prev=bars[i-1].close,tr=Math.max(b.high-b.low,Math.abs(b.high-prev),Math.abs(b.low-prev));if(value===null){seed.push(tr);if(seed.length<n)return null;value=avg(seed);}else value=(value*(n-1)+tr)/n;return value;});}
 export function calculateStudy(study,bars){
+  if(study.type==='trendLearning'){const learning=trendLearning(bars,study.params);return {series:[{name:'과거 커널 평활',color:study.color,kind:'line',lineStyle:'dotted',confirmed:true,data:learning.curve.map(({time,value})=>({time,value}))}],bands:[],bounds:null,learning};}
   const p=study.params,close=bars.map(b=>b.close),line=(name,values,color=study.color,kind='line',format='price')=>({name,color,kind,format,data:values.flatMap((v,i)=>Number.isFinite(v)?[{time:bars[i].time,value:v}]:[])});
   let series=[],bands=[],bounds=null;
   switch(study.type){

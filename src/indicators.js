@@ -1,6 +1,7 @@
 export {rollingMean,emaValues} from './technical-math.js';
 const period=(key='period',label='기간',value=14,max=500)=>({key,label,value,min:1,max,step:1});
 export const INDICATORS=[
+  {type:'trendLearning',name:'점선·저점 학습 · 원본 미확인',short:'점선·저점 학습',placement:'overlay',description:'과거 커널 평활, 과거 파동 복사 가정 경로, 지연 확정 저점을 배웁니다. 공유 이미지의 원본 지표 복제가 아닙니다.',color:'#111111',fields:[period('bandwidth','곡선 평활 강도',8,30),period('pattern','복사할 과거 파동 · 봉 수',30,120),period('horizon','가정 경로 · 최대 봉 수',20,60),period('left','저점 왼쪽 비교 봉',3,20),period('right','저점 오른쪽 확인 봉',3,20),{key:'showProjection',label:'과거 파동 복사 가정 경로 표시',kind:'boolean',value:true},{key:'showLows',label:'확인된 저점 표시',kind:'boolean',value:true},{key:'showPivotOrigin',label:'사후 확인한 과거 저점 위치도 표시',kind:'boolean',value:false}]},
   {type:'sma',name:'SMA · 단순이동평균',short:'SMA',placement:'overlay',description:'종가의 단순 평균을 가격 차트에 표시합니다.',color:'#e8a02d',fields:[period('period','기간',20)]},
   {type:'ema',name:'EMA · 지수이동평균',short:'EMA',placement:'overlay',description:'최근 가격에 더 큰 가중치를 주는 이동평균입니다.',color:'#3878ed',fields:[period('period','기간',21)]},
   {type:'bollinger',name:'볼린저 밴드',short:'BB',placement:'overlay',description:'이동평균과 표준편차로 상단·하단 밴드를 표시합니다.',color:'#6489bd',fields:[period('period','기간',20),{key:'deviation',label:'표준편차 배수',value:2,min:.1,max:10,step:.1}]},
@@ -26,14 +27,14 @@ export const BUILTIN_INDICATORS=[{type:'volume',name:'거래량 · Volume',short
 export const MAX_STUDIES=12;
 const catalog=new Map(INDICATORS.map(item=>[item.type,item]));
 export const indicatorDefinition=type=>catalog.get(type);
-export function createStudy(type){const definition=catalog.get(type);if(!definition)return null;return {id:crypto.randomUUID(),type,visible:true,color:definition.color,width:1,params:Object.fromEntries(definition.fields.map(f=>[f.key,f.value]))};}
+export function createStudy(type){const definition=catalog.get(type);if(!definition)return null;return {id:crypto.randomUUID(),type,visible:true,color:definition.color,width:type==='trendLearning'?2:1,params:Object.fromEntries(definition.fields.map(f=>[f.key,f.value]))};}
 export function normalizeStudy(raw){
   const definition=catalog.get(raw?.type);if(!definition||typeof raw.id!=='string'||['volume','rs','volumeProfile'].includes(raw.id)||!/^[\w-]{1,80}$/.test(raw.id))return null;
-  const params=Object.fromEntries(definition.fields.map(f=>{const value=Number(raw.params?.[f.key]);return [f.key,Number.isFinite(value)&&value>=f.min&&value<=f.max&&(f.step!==1||Number.isInteger(value))?value:f.value];}));
+  const params=Object.fromEntries(definition.fields.map(f=>{if(f.kind==='boolean')return [f.key,typeof raw.params?.[f.key]==='boolean'?raw.params[f.key]:f.value];const value=Number(raw.params?.[f.key]);return [f.key,Number.isFinite(value)&&value>=f.min&&value<=f.max&&(f.step!==1||Number.isInteger(value))?value:f.value];}));
   if(raw.type==='macd'&&params.fast>=params.slow){params.fast=12;params.slow=26;}
   return {id:raw.id,type:raw.type,visible:raw.visible!==false,width:[1,2,3,4].includes(raw.width)?raw.width:1,color:/^#[0-9a-f]{6}$/i.test(raw.color||'')?raw.color:definition.color,params};
 }
-export function studyLabel(study){const d=catalog.get(study.type);return `${d?.short||study.type}${d?.fields.length?' ('+d.fields.map(f=>study.params[f.key]).join(', ')+')':''}`;}
+export function studyLabel(study){const d=catalog.get(study.type);if(study.type==='trendLearning')return d.short+' · 원본 미확인';return `${d?.short||study.type}${d?.fields.length?' ('+d.fields.map(f=>study.params[f.key]).join(', ')+')':''}`;}
 export {calculateStudy,rsiValues,atrValues} from './indicator-calculations.js';
 export function nextLogicalRange(previous,{dataChanged=false,intervalChanged=false,rangeChanged=false,oldLength=0,newLength=0}={}){
   if(!previous||intervalChanged||rangeChanged)return null;

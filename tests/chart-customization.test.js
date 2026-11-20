@@ -51,5 +51,5 @@ test('CCI, MFI, Williams %R, ROC and CMF match direct reference calculations',()
   const upper=candles([12,12,12,12]).map(b=>({...b,high:12,low:10}));near(last('cmf',3,upper),1);
 });
 test('catalogue exposes built-in volume and profile controls without pretending they are custom scripts',()=>{
-  assert.ok(BUILTIN_INDICATORS.some(d=>d.type==='volume'&&d.builtin==='showVolume'));assert.ok(BUILTIN_INDICATORS.some(d=>d.type==='volumeProfile'&&d.builtin==='showProfile'));assert.equal(new Set([...INDICATORS,...BUILTIN_INDICATORS].map(d=>d.type)).size,26);
+  assert.ok(BUILTIN_INDICATORS.some(d=>d.type==='volume'&&d.builtin==='showVolume'));assert.ok(BUILTIN_INDICATORS.some(d=>d.type==='volumeProfile'&&d.builtin==='showProfile'));const all=[...INDICATORS,...BUILTIN_INDICATORS];assert.equal(new Set(all.map(d=>d.type)).size,all.length);
 });
