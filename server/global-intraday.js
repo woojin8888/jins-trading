@@ -1,4 +1,4 @@
-import {parseDailyHistory} from './history-data.js';
+import {parseDailyHistory,intradayQuality} from './history-data.js';
 import {assetKind,hasVolume} from '../src/instruments.js';
 const periods=value=>Array.isArray(value)?value.flatMap(periods):value&&Number.isFinite(value.start)&&Number.isFinite(value.end)?[value]:value&&typeof value==='object'?Object.values(value).flatMap(periods):[];
 // Foreign exchanges, FX and futures retain provider timestamps and breaks.
@@ -23,5 +23,5 @@ export function parseGlobalIntraday(result,symbol,interval,config){
   unique=runs.flatMap(run=>{const grouped=[];for(let i=0;i<run.length;i+=4){const members=run.slice(i,i+4),first=members[0],last=members.at(-1);grouped.push({...first,high:Math.max(...members.map(b=>b.high)),low:Math.min(...members.map(b=>b.low)),close:last.close,volume:members.every(b=>b.volume!==null)?members.reduce((n,b)=>n+b.volume,0):null,endTime:last.endTime,complete:last.complete});}return grouped;});
  }
  if(!unique.length)throw Error('이 자산의 해당 분봉은 제공되지 않습니다. 일봉을 선택해 주세요.');
- return {symbol,currency:info.meta.currency,timeZone:info.timeZone,interval,bars:unique.map(({date,...bar})=>bar),asOf:new Date(unique.at(-1).time*1000).toISOString(),quote:info.quote,quality:{intraday:true,sessionOpen:!unique.at(-1).complete,missingLatestSession:false,priceMismatch:false,invalidBarCount:invalid,snapshotQuotesSkipped:snapshots,incompleteGroups:0,splitRuns,providerSessions:true,volumeUnavailable:!hasVolume(symbol)},coverage:{from:new Date(unique[0].time*1000).toISOString(),to:new Date(unique.at(-1).time*1000).toISOString(),sourceInterval:config.source,range:config.range},source:`Yahoo Finance · 제공처 세션 ${interval}${interval==='4h'?' (연속 실제 1시간봉 최대 4개, 휴장·중간 공백 분리)':''} · 배당 보정 미적용`};
+ return {symbol,currency:info.meta.currency,timeZone:info.timeZone,interval,bars:unique.map(({date,...bar})=>bar),asOf:new Date(unique.at(-1).time*1000).toISOString(),quote:info.quote,quality:{intraday:true,sessionOpen:!unique.at(-1).complete,...intradayQuality(info,unique),invalidBarCount:invalid,snapshotQuotesSkipped:snapshots,incompleteGroups:0,splitRuns,providerSessions:true,volumeUnavailable:!hasVolume(symbol)},coverage:{from:new Date(unique[0].time*1000).toISOString(),to:new Date(unique.at(-1).time*1000).toISOString(),sourceInterval:config.source,range:config.range},source:`Yahoo Finance · 제공처 세션 ${interval}${interval==='4h'?' (연속 실제 1시간봉 최대 4개, 휴장·중간 공백 분리)':''} · 배당 보정 미적용`};
 }

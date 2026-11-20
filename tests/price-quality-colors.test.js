@@ -33,7 +33,7 @@ test('ranking metadata keeps explicit feed delay, minute-bar timestamp, currency
 });
 test('cross-source comparisons distinguish different trading dates and currencies from normal tick rounding',()=>{
   const data=mergeLatestSession(parseDailyHistory(raw(),'NVDA'),parseDailyHistory(raw({latest:true}),'NVDA')),history={...data,currency:'USD'};
-  const row={price:155.46,currency:'USD',barAt:'2026-11-17T14:30:00Z',tickSize:.01};assert.equal(quoteComparison(history,row).status,'within-tick');assert.equal(quoteComparison(history,{...row,price:155.47}).status,'within-tick');assert.equal(quoteComparison(history,{...row,price:156}).status,'different-price');assert.equal(quoteComparison(history,{...row,barAt:'2026-11-16T14:30:00Z'}).status,'different-session');assert.equal(quoteComparison(history,{...row,currency:'KRW'}).status,'currency-mismatch');
+  const row={price:155.46,currency:'USD',barAt:'2026-11-17T14:30:00Z',quoteBarAt:'2026-11-17T20:59:00Z',tickSize:.01};assert.equal(quoteComparison(history,row).status,'within-tick');assert.equal(quoteComparison(history,{...row,price:155.47}).status,'within-tick');assert.equal(quoteComparison(history,{...row,price:156}).status,'different-price');assert.equal(quoteComparison(history,{...row,barAt:'2026-11-16T14:30:00Z'}).status,'different-session');assert.equal(quoteComparison(history,{...row,currency:'KRW'}).status,'currency-mismatch');
 });
 test('the history endpoint requests the latest real daily bar and fresh requests bypass the application CDN cache',async t=>{
   const original=global.fetch,calls=[];t.after(()=>{global.fetch=original;});

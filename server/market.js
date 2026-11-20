@@ -75,7 +75,7 @@ export async function routeMarket(url){
     const action=url.searchParams.get('action')||'history';
     const board=url.searchParams.get('board')||'all';
     try{validateBoard(market,board);}catch(error){return reply({error:error.message},400);}
-    if(action==='assets')return reply(await globalAssetRows(market,Number(url.searchParams.get('offset')||0)));
+    if(action==='assets')return reply(await globalAssetRows(market,Number(url.searchParams.get('offset')||0),{fresh:url.searchParams.has('fresh')}));
     if(action==='search'){try{return reply(await searchInstruments(url.searchParams.get('q')||'',market));}catch(error){return reply({error:error.message},400);}}
     if(action==='universe')return reply(await universe(market,board));
     if(action==='rankings'){

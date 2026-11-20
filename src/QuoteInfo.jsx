@@ -1,21 +1,41 @@
 import React from 'react';
 import {timeframeLabel,formatBarTime} from './timeframes.js';
-import {delayLabel,formatQuoteTime,quoteComparison} from './quote-info.js';
-import {formatPrice,assetKind,currencyLabel} from './instruments.js';
-const price=(value,currency)=>Number.isFinite(value)?value.toLocaleString('ko-KR',{maximumFractionDigits:currency==='KRW'?0:2}):'미제공';
-export default function QuoteInfo({history,listQuote,stale=false,autoRefresh=false}){
+import {delayLabel,formatQuoteTime,quoteComparison,quoteFreshness,elapsedLabel,volumeComparison} from './quote-info.js';
+import {formatPrice,assetKind} from './instruments.js';
+import {useMarketClock} from './useMarketClock.js';
+export default function QuoteInfo({history,quoteHistory,dailyHistory,listQuote,stale=false,autoRefresh=false}){
+  const now=useMarketClock();
   if(!history)return null;
-  const intraday=!!history.quality?.intraday,barLabel=intraday?timeframeLabel(history.interval)+'봉':'일봉',quality=history.quality||{},comparison=quoteComparison(history,listQuote),warning=stale||quality.missingLatestSession||quality.priceMismatch||comparison.status==='currency-mismatch';
-  return <details className={`quote-provenance ${warning?'quote-warning':''}`}><summary><span>{warning?'시세 확인 필요':'제공처 세션 '+barLabel+' 기준'}</span><span>{listQuote?`목록 ${delayLabel(listQuote)}`:'지연 가능 · 실시간 보장 없음'}</span><span className="quote-summary-time">제공처 기준 {formatQuoteTime(history.quote?.asOf)}</span><span>{autoRefresh?'1분 자동 갱신':'자동 갱신 꺼짐'}</span><span>시세 기준 확인</span></summary><div className="quote-provenance-body">
+  const latest=quoteHistory||history,quote=latest.quote,quality=history.quality||{},freshness=quoteFreshness(latest,now);
+  const intraday=!!quality.intraday,barLabel=intraday?timeframeLabel(history.interval)+'봉':'일봉';
+  const comparison=quoteComparison(latest,listQuote),volume=volumeComparison(dailyHistory||history,listQuote);
+  const warning=stale||quality.missingLatestSession||quality.priceMismatch||quality.dataGap||freshness.invalidTime||freshness.providerDelayed||freshness.viewStale||comparison.status==='currency-mismatch'||volume?.different;
+  const price=value=>formatPrice(value,latest.currency,quote?.precision??2);
+  return <details className={`quote-provenance ${warning?'quote-warning':''}`}><summary>
+    <span>{freshness.viewStale?'화면 갱신 지연':freshness.providerDelayed?'25분 이상 지난 시세':quality.dataGap?'차트 자료 지연':volume?.different?'거래량 출처 차이':warning?'시세 기준 확인 필요':'제공처 시세 기준'}</span>
+    <span>{listQuote?`목록 ${delayLabel(listQuote)}`:'지연 가능 · 실시간 보장 없음'}</span>
+    <span className="quote-summary-time">가격 기준 {formatQuoteTime(quote?.asOf)} · {elapsedLabel(freshness.ageSeconds)}</span>
+    <span>{freshness.marketOpen===false?'거래시간 밖 · 마지막 시세':freshness.marketOpen===true?'제공처 거래시간 중':'거래시간 정보 미제공'}</span>
+    <span>{autoRefresh?'1분 자동 갱신':'자동 갱신 꺼짐'}</span><span>상세 보기</span>
+  </summary><div className="quote-provenance-body">
     {stale&&<p role="status">새로고침에 실패해 마지막으로 받은 자료를 표시하고 있습니다.</p>}
-    {quality.missingLatestSession&&<p role="status">최신 거래일 {quality.expectedSessionDate}의 일봉이 누락됐습니다. 차트는 {quality.latestBarDate}까지의 유효한 봉만 표시합니다.</p>}
-    {quality.priceMismatch&&<p role="status">제공처의 최신 가격과 최근 봉의 종가가 다릅니다. 아래 기준 시각을 확인해 주세요.</p>}
-    <dl><dt>차트 최근 {barLabel}</dt><dd>{intraday?formatBarTime(history.bars.at(-1)?.time,history.timeZone):history.asOf} · {formatPrice(history.bars.at(-1)?.close,history.currency,history.quote?.precision??2)} {history.currency||''}{quality.sessionOpen?' · 장중 변동 가능':''}</dd><dt>제공처 최신 시각</dt><dd>{formatQuoteTime(history.quote?.asOf)}</dd><dt>차트 제공처</dt><dd>{history.source||'Yahoo Finance · 제공처 세션 · 배당 미보정'}</dd><dt>차트 조회 시각</dt><dd>{formatQuoteTime(history.fetchedAt)}</dd>
-      {listQuote&&<><dt>목록 최근 가격</dt><dd>{formatPrice(listQuote.price,listQuote.currency||history.currency,listQuote.precision??history.quote?.precision??2)} {listQuote.currency||history.currency} · {delayLabel(listQuote)}</dd><dt>목록 최근 1분봉</dt><dd>{formatQuoteTime(listQuote.quoteBarAt)}</dd><dt>목록 제공처</dt><dd>{listQuote.provider||'TradingView Screener'}</dd></>}
+    {freshness.invalidTime&&<p role="status">가격 기준 시각이 없거나 유효하지 않아 최신 여부를 확인할 수 없습니다.</p>}
+    {freshness.viewStale&&<p role="status">화면을 조회한 지 2분이 넘었습니다. 새로고침하거나 자동 갱신을 켜 주세요.</p>}
+    {freshness.providerDelayed&&<p role="status">제공처 거래시간 중이지만 가격 기준 시각이 25분 이상 지났습니다. 지연·중간 휴장·제공처 갱신 상태를 확인해 주세요.</p>}
+    {quality.missingLatestSession&&<p role="status">제공처 최신 거래일 {quality.expectedSessionDate}에 비해 차트는 {quality.latestBarDate}까지의 봉만 있습니다.</p>}
+    {quality.priceMismatch&&<p role="status">최근 봉 종가와 제공처 최신 시세가 다릅니다. 상단 가격은 최신 시세, 아래 OHLC는 선택한 봉의 값입니다.</p>}
+    {quality.dataGap&&<p role="status">제공처 최신 시각에 비해 차트의 마지막 봉 범위가 뒤처져 있습니다. 누락 구간을 임의의 봉으로 채우지 않았습니다.</p>}
+    <dl><dt>{['stock','etf'].includes(assetKind(history.symbol))?'정규장 최신 시세':'제공처 최신 시세'}</dt><dd>{price(quote?.price)} {latest.currency}</dd>
+      <dt>전일 기준값</dt><dd>{price(quote?.previousClose)} {latest.currency} · {assetKind(history.symbol)==='future'?'제공처 전일 정산·종가 기준':assetKind(history.symbol)==='fx'?'제공처 거래일 기준':'정규장 기준'}{!Number.isFinite(quote?.previousClose)&&' · 미제공 시 등락률을 계산하지 않습니다.'}</dd>
+      <dt>차트 최근 {barLabel}</dt><dd>{intraday?formatBarTime(history.bars.at(-1)?.time,history.timeZone):history.asOf} · 종가 {formatPrice(history.bars.at(-1)?.close,history.currency,history.quote?.precision??2)} {history.currency}{quality.confirmationPending?' · 제공처 마감 확인 대기':quality.sessionOpen?' · 진행 중':''}</dd>
+      <dt>가격 제공처 시각</dt><dd>{formatQuoteTime(quote?.asOf)}</dd><dt>차트 제공처</dt><dd>{history.source||'Yahoo Finance · 정규장 · 배당 미보정'}</dd><dt>차트 조회 시각</dt><dd>{formatQuoteTime(history.fetchedAt)}</dd>
+      {listQuote&&<><dt>목록 최근 가격</dt><dd>{formatPrice(listQuote.price,listQuote.currency||history.currency,listQuote.precision??2)} {listQuote.currency||history.currency} · {delayLabel(listQuote)}</dd><dt>목록 가격·최근 1분봉 기준</dt><dd>{formatQuoteTime(listQuote.quoteBarAt||listQuote.asOf)}</dd><dt>목록 제공처</dt><dd>{listQuote.provider||'TradingView Screener'}</dd></>}
     </dl>
-    {comparison.status==='different-session'&&<p>차트와 목록의 거래일이 다릅니다 ({comparison.chartDate} / {comparison.listDate}).</p>}
-    {comparison.status==='different-price'&&<p>두 가격 차이 {comparison.percent.toFixed(3)}%. 제공처와 반영 시각이 달라 값이 다를 수 있습니다.</p>}
+    {comparison.status==='different-session'&&<p>최신 시세와 목록의 거래일이 다릅니다 ({comparison.chartDate} / {comparison.listDate}).</p>}
+    {comparison.status==='different-time'&&<p>두 출처의 가격 기준 시각이 다릅니다. 동일 순간의 가격 정확도 비교로 보지 않습니다.</p>}
+    {comparison.status==='different-price'&&<p>가까운 기준 시각의 두 출처 가격 차이 {comparison.percent.toFixed(3)}%. 거래소·반영 시각 차이도 확인해 주세요.</p>}
     {comparison.status==='currency-mismatch'&&<p role="status">차트와 목록의 통화가 달라 가격을 직접 비교할 수 없습니다.</p>}
-    <p className="quote-data-note">지연 시간은 목록 제공처의 표시입니다. 차트의 지연 시간은 보장되지 않으며 가격 제공 시각으로 확인합니다. 목록의 1분봉 시각은 최종 체결 시각과 다를 수 있습니다. 조회 시각은 가격의 기준 시각이 아닙니다.</p>
+    {volume?.different&&<p role="status">거래량 출처 차이 {volume.percent.toFixed(3)}% · 차트 {volume.chartVolume.toLocaleString('ko-KR')}, 목록 {volume.listVolume.toLocaleString('ko-KR')}. 차트 지표는 Yahoo 봉 거래량을 사용합니다.</p>}
+    <p className="quote-data-note">자동 갱신은 제공처의 시세 지연을 없애지 않습니다. 조회 시각과 가격 기준 시각은 다릅니다. 가격·등락률은 최신 정규장 시세 기준이며 선택 봉의 OHLC·거래량과 구분합니다. 거래량 집계와 배당·분할 보정 기준이 다른 출처의 숫자를 섞어 지표를 보정하지 않습니다.</p>
   </div></details>;
 }

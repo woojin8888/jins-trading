@@ -1,6 +1,6 @@
 import {parseGlobalIntraday} from './global-intraday.js';
 import {assetKind,hasVolume} from '../src/instruments.js';
-import {parseDailyHistory} from './history-data.js';
+import {parseDailyHistory,intradayQuality} from './history-data.js';
 export const INTRADAY={ '15m':{source:'15m',range:'1mo',seconds:900},'30m':{source:'30m',range:'1mo',seconds:1800},'1h':{source:'60m',range:'2y',seconds:3600},'4h':{source:'60m',range:'2y',seconds:14400}};
 const parts=(time,formatter)=>Object.fromEntries(formatter.formatToParts(new Date(time*1000)).map(p=>[p.type,p.value]));
 function periods(value){if(Array.isArray(value))return value.flatMap(periods);if(value&&Number.isFinite(value.start)&&Number.isFinite(value.end))return [value];if(value&&typeof value==='object')return Object.values(value).flatMap(periods);return [];}
@@ -39,5 +39,5 @@ export function parseIntraday(result,symbol,interval){
     });
   }
   if(!unique.length)throw Error('분봉 데이터가 제공되지 않거나 유효한 정규장 봉이 없습니다. 일봉을 선택해 주세요.');
-  return {symbol,currency:result.meta.currency,timeZone,interval,bars:unique,asOf:new Date(unique.at(-1).time*1000).toISOString(),quote:info.quote,quality:{intraday:true,sessionOpen:unique.at(-1).complete===false,missingLatestSession:false,priceMismatch:false,invalidBarCount:invalid,snapshotQuotesSkipped:snapshots,incompleteGroups,providerSessionDiffers,regularSessionOnly:true},coverage:{from:new Date(unique[0].time*1000).toISOString(),to:new Date(unique.at(-1).time*1000).toISOString(),sourceInterval:config.source,range:config.range},source:`Yahoo Finance · 정규장 ${interval}${interval==='4h'?' (1시간봉 집계)':''} · 배당 보정 미적용`};
+  return {symbol,currency:result.meta.currency,timeZone,interval,bars:unique,asOf:new Date(unique.at(-1).time*1000).toISOString(),quote:info.quote,quality:{intraday:true,sessionOpen:unique.at(-1).complete===false,...intradayQuality(info,unique),invalidBarCount:invalid,snapshotQuotesSkipped:snapshots,incompleteGroups,providerSessionDiffers,regularSessionOnly:true},coverage:{from:new Date(unique[0].time*1000).toISOString(),to:new Date(unique.at(-1).time*1000).toISOString(),sourceInterval:config.source,range:config.range},source:`Yahoo Finance · 정규장 ${interval}${interval==='4h'?' (1시간봉 집계)':''} · 배당 보정 미적용`};
 }
