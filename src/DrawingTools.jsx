@@ -4,8 +4,10 @@ import {anchorAtLogical,DRAWING_LABELS,drawingStorageKey,logicalAtTime,normalize
 import {useCloudDocument} from './cloud-document.js';
 const EMPTY={version:1,items:[]},ICONS={horizontal:Minus,trend:TrendingUp,rectangle:Square,ellipse:Circle,arrow:ArrowUpRight,text:Type};
 function readDocument(key){try{return {key,doc:normalizeDrawings(JSON.parse(localStorage.getItem(drawingStorageKey(key))||'null')),past:[],future:[]};}catch{return {key,doc:EMPTY,past:[],future:[]};}}
-export function useDrawings(key){
-  const [owner,market,symbol]=key.split(':'),cloud=useCloudDocument({userId:owner==='guest'?null:owner,documentKey:`drawings:${market}:${symbol}`,normalize:normalizeDrawings,initial:()=>readDocument(key).doc,legacyKey:drawingStorageKey(key)});
+export function useDrawings(key,{temporary=false}={}){
+  const [owner,market,symbol]=key.split(':'),stored=useCloudDocument({userId:temporary||owner==='guest'?null:owner,authReady:!temporary,documentKey:`drawings:${market}:${symbol}`,normalize:normalizeDrawings,initial:()=>temporary?EMPTY:readDocument(key).doc,legacyKey:temporary?undefined:drawingStorageKey(key)});
+  const [temporaryDoc,setTemporaryDoc]=useState(EMPTY);
+  const cloud=temporary?{value:temporaryDoc,setValue:setTemporaryDoc,ready:true,error:'',status:'리플레이 임시 도형 · 종료하면 사라짐',retry:()=>{}}:stored;
   const [history,setHistory]=useState({past:[],future:[]}),[tool,setTool]=useState('select'),[selectedId,setSelectedId]=useState(null),[color,setColor]=useState('#2463eb'),[width,setWidth]=useState(2),[text,setText]=useState('메모'),[hidden,setHidden]=useState(false);
   useLayoutEffect(()=>{setHistory({past:[],future:[]});setTool('select');setSelectedId(null);},[key]);
   const doc=cloud.value,selected=doc.items.find(row=>row.id===selectedId);

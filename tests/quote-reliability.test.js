@@ -76,6 +76,9 @@ test('cross-source comparisons use quote prices and do not score unaligned times
   const h={currency:'USD',timeZone:'America/New_York',quote:{price:145.98,asOf:'2026-11-19T21:00:01Z',sessionDate:'2026-11-19'},bars:[{time:'2026-11-19',close:146}]};
   const row={price:145.98,currency:'USD',barAt:'2026-11-19T14:30:00Z',quoteBarAt:'2026-11-19T20:59:00Z',tickSize:.01};assert.equal(quoteComparison(h,row).status,'within-tick');assert.equal(quoteComparison(h,{...row,quoteBarAt:'2026-11-19T20:30:00Z'}).status,'different-time');
 });
+test('two Yahoo views are never labeled as an independent external price cross-check',()=>{
+  const h={currency:'USD',quote:{price:100,provider:'Yahoo Finance'},bars:[{time:'2026-11-19',close:100}]};assert.equal(quoteComparison(h,{price:100,currency:'USD',provider:'Yahoo Finance'}).status,'same-provider');
+});
 test('closed-session volume divergence is reported without altering source bars or comparing a forming session',()=>{
   const h={timeZone:'America/New_York',quality:{marketOpen:false},bars:[{time:'2026-11-19',volume:320588100}]},row={volume:322939561,barAt:'2026-11-19T14:30:00Z'};assert.equal(volumeComparison(h,row).different,true);assert.equal(h.bars[0].volume,320588100);assert.equal(volumeComparison({...h,quality:{marketOpen:true}},row),null);
 });

@@ -14,6 +14,7 @@ export default function QuoteInfo({history,quoteHistory,dailyHistory,listQuote,s
   return <details className={`quote-provenance ${warning?'quote-warning':''}`}><summary>
     <span>{freshness.viewStale?'화면 갱신 지연':freshness.providerDelayed?'25분 이상 지난 시세':quality.dataGap?'차트 자료 지연':volume?.different?'거래량 출처 차이':warning?'시세 기준 확인 필요':'제공처 시세 기준'}</span>
     <span>{listQuote?`목록 ${delayLabel(listQuote)}`:'지연 가능 · 실시간 보장 없음'}</span>
+    <span>{comparison.status==='within-tick'?'가격 대조 · 1호가 내 일치':comparison.status==='different-price'?'가격 대조 · 차이 있음':comparison.status==='same-provider'?'동일 공급처 · 독립 대조 아님':['different-time','different-session'].includes(comparison.status)?'시각·세션 달라 대조 보류':'외부 가격 대조 미확인'}</span>
     <span className="quote-summary-time">가격 기준 {formatQuoteTime(quote?.asOf)} · {elapsedLabel(freshness.ageSeconds)}</span>
     <span>{freshness.marketOpen===false?'거래시간 밖 · 마지막 시세':freshness.marketOpen===true?'제공처 거래시간 중':'거래시간 정보 미제공'}</span>
     <span>{autoRefresh?'1분 자동 갱신':'자동 갱신 꺼짐'}</span><span>상세 보기</span>
@@ -31,6 +32,8 @@ export default function QuoteInfo({history,quoteHistory,dailyHistory,listQuote,s
       <dt>가격 제공처 시각</dt><dd>{formatQuoteTime(quote?.asOf)}</dd><dt>차트 제공처</dt><dd>{history.source||'Yahoo Finance · 정규장 · 배당 미보정'}</dd><dt>차트 조회 시각</dt><dd>{formatQuoteTime(history.fetchedAt)}</dd>
       {listQuote&&<><dt>목록 최근 가격</dt><dd>{formatPrice(listQuote.price,listQuote.currency||history.currency,listQuote.precision??2)} {listQuote.currency||history.currency} · {delayLabel(listQuote)}</dd><dt>목록 가격·최근 1분봉 기준</dt><dd>{formatQuoteTime(listQuote.quoteBarAt||listQuote.asOf)}</dd><dt>목록 제공처</dt><dd>{listQuote.provider||'TradingView Screener'}</dd></>}
     </dl>
+    {comparison.status==='within-tick'&&<p>가까운 기준 시각의 두 가격이 표시 정밀도·최소 호가 기준 안에서 일치했습니다. 이 조회의 대조 결과이며 사이트 전체의 장기 정확도를 뜻하지 않습니다.</p>}
+    {comparison.status==='same-provider'&&<p>목록과 차트가 같은 시세 공급처이므로 두 화면의 일치를 독립적인 외부 검증으로 계산하지 않습니다.</p>}
     {comparison.status==='different-session'&&<p>최신 시세와 목록의 거래일이 다릅니다 ({comparison.chartDate} / {comparison.listDate}).</p>}
     {comparison.status==='different-time'&&<p>두 출처의 가격 기준 시각이 다릅니다. 동일 순간의 가격 정확도 비교로 보지 않습니다.</p>}
     {comparison.status==='different-price'&&<p>가까운 기준 시각의 두 출처 가격 차이 {comparison.percent.toFixed(3)}%. 거래소·반영 시각 차이도 확인해 주세요.</p>}

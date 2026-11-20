@@ -32,6 +32,7 @@ export function quoteComparison(history,row){
   const bar=history?.bars?.at(-1),quote=history?.quote;
   if(!bar||!Number.isFinite(quote?.price)||!Number.isFinite(row?.price))return {status:'unavailable'};
   if(history.currency&&row.currency&&history.currency!==row.currency)return {status:'currency-mismatch'};
+  if(quote.provider&&row.provider&&quote.provider===row.provider)return {status:'same-provider'};
   const date=row.barAt?new Date(row.barAt).toLocaleDateString('sv-SE',{timeZone:history.timeZone||'UTC'}):null;
   if(!date)return {status:'unknown-session'};
   const chartDate=quote.sessionDate;
