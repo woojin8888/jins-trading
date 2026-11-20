@@ -21,6 +21,15 @@ test('valid Korean 4h closing bars retain every real hour including 15:00–15:3
   // An internal null hour invalidates the aggregate even if both end points exist.
   q.close[5]=null;const broken=parseIntraday(data,'005930.KS','4h');assert.equal(broken.bars.length,1);assert.equal(broken.quality.missingSourceBars,1);assert.equal(broken.quality.incompleteGroups,1);
 });
+test('a flat zero-volume KRX closing snapshot cannot repair a missing closing interval or complete a 4h group',()=>{
+  const start=sec('2026-11-19T00:00:00Z'),providerEnd=start+21600,times=Array.from({length:7},(_,i)=>start+i*3600),q={open:times.map(()=>100),high:times.map(()=>102),low:times.map(()=>99),close:times.map(()=>101),volume:times.map(()=>10)};
+  for(const key of ['open','high','low','close'])q[key][6]=101;q.volume[6]=0;
+  const raw={meta:{symbol:'005930.KS',currency:'KRW',exchangeTimezoneName:'Asia/Seoul',regularMarketTime:start+23405,regularMarketPrice:101,tradingPeriods:[[{start,end:providerEnd}]]},timestamp:times,indicators:{quote:[q]}};
+  const parsed=parseIntraday(raw,'005930.KS','4h');assert.equal(parsed.bars.length,1);assert.equal(parsed.quality.incompleteGroups,1);assert.equal(parsed.quality.snapshotQuotesSkipped,1);assert.equal(parsed.quality.missingSourceBars,1);
+  // A real zero-volume flat candle inside the session remains an observation.
+  for(const key of ['open','high','low','close'])q[key][2]=101;q.volume[2]=0;
+  assert.equal(parseIntraday(raw,'005930.KS','1h').bars.find(b=>b.time===times[2]).volume,0);
+});
 test('comparison never labels unknown tick size, missing currency, another symbol or an extended session as a one-tick match',()=>{
   const h={symbol:'NVDA',currency:'USD',timeZone:'America/New_York',quote:{price:100,asOf:'2026-11-19T21:00:00Z',sessionDate:'2026-11-19',precision:2},bars:[{time:'2026-11-19',close:100}]};
   const row={symbol:'NVDA',currency:'USD',price:100,barAt:'2026-11-19T14:30:00Z',quoteBarAt:'2026-11-19T20:59:00Z'};

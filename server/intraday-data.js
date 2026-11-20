@@ -27,6 +27,9 @@ export function parseIntraday(result,symbol,interval){
     observedSessions.push({start,end});
     const bar={time,open:q.open?.[i],high:q.high?.[i],low:q.low?.[i],close:q.close?.[i],volume:hasVolume(symbol)&&Number.isFinite(q.volume?.[i])&&q.volume[i]>=0?q.volume[i]:null,sessionStart:start,sessionEnd:end,providerEnd,endTime:Math.min(time+sourceSeconds,end)};
     if(![bar.open,bar.high,bar.low,bar.close].every(n=>Number.isFinite(n)&&n>0)||bar.high<Math.max(bar.open,bar.close)||bar.low>Math.min(bar.open,bar.close)){invalid++;continue;}
+    // A flat zero-volume closing snapshot at Yahoo's erroneous KRX 15:00
+    // boundary is not a real 15:00–15:15/15:30 candle or a missing closing hour.
+    if(kr&&time===providerEnd&&providerEnd<end&&bar.volume===0&&bar.open===bar.high&&bar.high===bar.low&&bar.low===bar.close){snapshots++;continue;}
     bar.complete=bar.endTime<=quoteTime;bars.push(bar);
   }
   let unique=[...new Map(bars.map(bar=>[bar.time,bar])).values()].sort((a,b)=>a.time-b.time),incompleteGroups=0;
