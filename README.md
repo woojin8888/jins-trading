@@ -214,3 +214,5 @@ Vercel: Vite / build `npm run build` / output `dist` / Node.js 24. 새 Supabase 
 ## 차트 라이선스
 
 차트는 TradingView의 Apache-2.0 라이선스 [Lightweight Charts](https://github.com/tradingview/lightweight-charts)를 사용합니다. 라이브러리 기본 TradingView attribution을 유지하고 차트 아래에도 제공자 링크를 표시합니다. 이 사이트는 TradingView 공식 제품이 아닙니다.
+
+매물대 기본 색상은 연한 회색입니다. 이전 기본 하늘색 설정은 회색으로 이관하고 직접 지정한 다른 색상은 유지합니다.

@@ -7,8 +7,12 @@ const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-8,`${a} != ${b}`);
 const candles=values=>values.map((close,i)=>({time:new Date(Date.UTC(2024,0,i+1)).toISOString().slice(0,10),open:close-.2,high:close+1,low:close-1,close,volume:100}));
 test('legacy settings migrate without losing studies or hidden averages, with the requested black 20 line',()=>{
   const study=createStudy('rsi'),prefs=normalizePreferences({version:1,averages:[20,200],showVolume:false,showProfile:true,studies:[study]});
-  assert.equal(prefs.version,3);assert.deepEqual(prefs.movingAverages.filter(ma=>ma.visible).map(ma=>ma.period),[20,200]);
+  assert.equal(prefs.version,4);assert.deepEqual(prefs.movingAverages.filter(ma=>ma.visible).map(ma=>ma.period),[20,200]);
   const twenty=prefs.movingAverages.find(ma=>ma.period===20);assert.equal(twenty.color,'#111111');assert.equal(twenty.width,3);
+  assert.equal(prefs.profile.color,'#9a9a9a');
+  const prior={...defaultChartPreferences(),version:3,showProfile:true};prior.profile.color='#6DA4ED';assert.equal(normalizePreferences(prior).profile.color,'#9a9a9a');assert.equal(normalizePreferences(prior).showProfile,true);
+  prior.profile.color='#123456';assert.equal(normalizePreferences(prior).profile.color,'#123456');
+  assert.equal(normalizePreferences({...prior,version:4,profile:{...prior.profile,color:'#6da4ed'}}).profile.color,'#6da4ed');
   assert.equal(prefs.showVolume,false);assert.equal(prefs.showProfile,true);assert.equal(prefs.studies[0].id,study.id);assert.equal(prefs.volume.format,'korean');assert.deepEqual(normalizePreferences(prefs),prefs);
 });
 test('custom moving average type, source, period, width and color survive settings reload',()=>{
