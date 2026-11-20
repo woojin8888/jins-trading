@@ -11,7 +11,7 @@ if(!Number.isInteger(rounds)||rounds<1||rounds>3)throw Error('--rounds는 1~3 �
 const cases=[['us','NVDA','1d'],['etf','SPY','1d'],['kr','005930','1d'],['kr','000660','1d'],['indices','^GSPC','1d'],['fx','JPY=X','1d'],['us','NVDA','15m'],['us','NVDA','4h'],['kr','005930','15m'],['kr','005930','30m'],['kr','005930','1h'],['kr','005930','4h'],['commodities','GC=F','4h'],['hk','0700.HK','4h']];
 const headers={'User-Agent':'Mozilla/5.0','Accept':'application/json'};
 async function get(url){const response=await fetch(url,{headers,signal:AbortSignal.timeout(25000),cache:'no-store'});if(!response.ok)throw Error(`HTTP ${response.status}`);return response.json();}
-const report={site:base.origin,startedAt:new Date().toISOString(),method:{historicalPriceAbsoluteTolerance:.01,historicalVolumeRelativeTolerancePercent:.1,historyMaxBarsPerSymbol:14,independentReference:'Nasdaq historical · NVDA/SPY only',notMeasured:['전체 사이트 신뢰도 백분율','장기간 가동률','거래소 원장과의 일치율','TradingView 원본 지표 실행 결과']},rounds:[]};
+const report={site:base.origin,startedAt:new Date().toISOString(),method:{historicalPriceAbsoluteTolerance:.01,historicalVolumeRelativeTolerancePercent:.1,historyMaxBarsPerSymbol:14,independentReference:'Nasdaq historical · NVDA/SPY only',repeatedRoundsCanContainSameHistoricalDates:true,notMeasured:['전체 사이트 신뢰도 백분율','장기간 가동률','거래소 원장과의 일치율','TradingView 원본 지표 실행 결과']},rounds:[]};
 for(let round=0;round<rounds;round++){
   if(round)await new Promise(resolve=>setTimeout(resolve,60000));
   const current={startedAt:new Date().toISOString(),observations:[],referenceChecks:[]},histories=new Map();
@@ -33,6 +33,8 @@ for(let round=0;round<rounds;round++){
   const observations=report.rounds.flatMap(r=>r.observations),comparisons=report.rounds.flatMap(r=>r.referenceChecks.flatMap(c=>c.comparisons||[]));
   const count=rows=>({matched:rows.filter(x=>x.match).length,total:rows.length,percent:rows.length?rows.filter(x=>x.match).length/rows.length*100:null});
   report.summary={apiSuccessful:observations.filter(o=>o.ok).length,apiTotal:observations.length,integrityFailures:observations.filter(o=>!o.ok||o.errors.length).length,observationsWithWarnings:observations.filter(o=>o.warnings?.length).length,referenceChecksIncomplete:report.rounds.flatMap(r=>r.referenceChecks).filter(r=>r.status!=='compared').length,priceSample:count(comparisons.filter(c=>c.field!=='volume')),volumeSample:count(comparisons.filter(c=>c.field==='volume')),overallReliabilityPercent:null};
+  const unique=[...new Map(comparisons.map(c=>[`${c.symbol}:${c.date}:${c.field}`,c])).values()];
+  report.summary.uniquePriceSample=count(unique.filter(c=>c.field!=='volume'));report.summary.uniqueVolumeSample=count(unique.filter(c=>c.field==='volume'));
   report.finishedAt=current.finishedAt;await mkdir(dirname(output),{recursive:true});await writeFile(output,JSON.stringify(report,null,2));
   console.log(JSON.stringify({round:round+1,...report.summary,output}));
 }
