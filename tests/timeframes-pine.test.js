@@ -44,7 +44,7 @@ test('a partial first group is omitted and no four-hour candle combines differen
   const parsed=parseIntraday(raw,'NVDA','4h');assert.equal(parsed.bars.length,1);assert.equal(parsed.quality.incompleteGroups,1);assert.equal(parsed.bars[0].time,sec('2026-11-17T18:30:00Z'));
 });
 test('KR provider session differences are disclosed without fabricating missing half-hour OHLCV',()=>{
-  const start=sec('2026-11-17T00:00:00Z'),data=source({kr:true,start,count:6,earlyEnd:start+360*60,quoteAt:start+390*60});const parsed=parseIntraday(data,'005930.KS','4h');assert.equal(parsed.bars.length,2);assert.equal(parsed.bars[1].time,start+240*60);assert.equal(parsed.bars[1].volume,200);assert.equal(parsed.quality.providerSessionDiffers,true);assert.equal(parsed.bars[1].endTime,start+390*60);
+  const start=sec('2026-11-17T00:00:00Z'),data=source({kr:true,start,count:6,earlyEnd:start+360*60,quoteAt:start+390*60});const parsed=parseIntraday(data,'005930.KS','4h');assert.equal(parsed.bars.length,1);assert.equal(parsed.bars[0].endTime,start+240*60);assert.equal(parsed.quality.incompleteGroups,1);assert.equal(parsed.quality.providerSessionDiffers,true);assert.equal(parsed.quality.missingSourceBars,1);assert.equal(parsed.quality.missingSourceSeconds,1800);assert.deepEqual(parsed.quality.sourceGaps,[{start:start+360*60,end:start+390*60}]);
 });
 test('off-grid quote snapshots are excluded and an actual forming intraday candle is unconfirmed',()=>{
   const start=sec('2026-11-17T14:30:00Z'),raw=source({start,count:3,seconds:900,quoteAt:start+31*60});const result=parseIntraday(raw,'NVDA','15m');assert.equal(result.bars.length,3);assert.equal(result.quality.snapshotQuotesSkipped,1);assert.equal(result.bars.at(-1).complete,false);assert.equal(result.bars.at(-1).volume,100);

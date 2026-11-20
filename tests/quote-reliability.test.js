@@ -45,6 +45,7 @@ test('explicit refresh bypasses the short-lived asset cache instead of silently 
   const first=await assetQuote({symbol:'SI=F'}),cached=await assetQuote({symbol:'SI=F'}),fresh=await assetQuote({symbol:'SI=F'},{fresh:true});assert.equal(calls,2);assert.equal(first.price,cached.price);assert.notEqual(first.price,fresh.price);
 });
 test('switching candle intervals does not replace the latest quote with an older last-candle close',()=>{
+  assert.equal(latestQuoteHistory([null,null]),null);assert.equal(latestQuoteHistory([]),null);assert.equal(latestQuoteHistory([undefined,{}]),null);
   const daily={symbol:'NVDA',currency:'USD',quote:{price:145.98,changePercent:-3.2,asOf:'2026-11-19T21:00:01Z'}},four={...daily,bars:[{close:146}],quote:{...daily.quote,asOf:'2026-11-19T20:59:00Z'}};
   assert.equal(latestQuoteHistory([daily,four]),daily);assert.equal(latestQuoteHistory([four,daily]),daily);
   assert.equal(latestQuoteHistory([daily,{...four,symbol:'MSFT',quote:{...four.quote,asOf:'2026-11-19T22:00:00Z'}}]),daily);
@@ -80,7 +81,10 @@ test('two Yahoo views are never labeled as an independent external price cross-c
   const h={currency:'USD',quote:{price:100,provider:'Yahoo Finance'},bars:[{time:'2026-11-19',close:100}]};assert.equal(quoteComparison(h,{price:100,currency:'USD',provider:'Yahoo Finance'}).status,'same-provider');
 });
 test('closed-session volume divergence is reported without altering source bars or comparing a forming session',()=>{
-  const h={timeZone:'America/New_York',quality:{marketOpen:false},bars:[{time:'2026-11-19',volume:320588100}]},row={volume:322939561,barAt:'2026-11-19T14:30:00Z'};assert.equal(volumeComparison(h,row).different,true);assert.equal(h.bars[0].volume,320588100);assert.equal(volumeComparison({...h,quality:{marketOpen:true}},row),null);
+  const h={symbol:'NVDA',currency:'USD',timeZone:'America/New_York',quote:{asOf:'2026-11-19T21:00:01Z',provider:'Yahoo Finance'},quality:{marketOpen:false},bars:[{time:'2026-11-19',volume:320588100}]},row={symbol:'NVDA',currency:'USD',volume:322939561,barAt:'2026-11-19T14:30:00Z',quoteBarAt:'2026-11-19T20:59:00Z',provider:'TradingView Screener'};assert.equal(volumeComparison(h,row).different,true);assert.equal(h.bars[0].volume,320588100);assert.equal(volumeComparison({...h,quality:{marketOpen:true}},row),null);
+  for(const patch of [{quoteBarAt:'2026-11-19T20:00:00Z'},{symbol:'MSFT'},{currency:'KRW'},{currentSession:'post'},{provider:'Yahoo Finance'},{barAt:'invalid'}])assert.equal(volumeComparison(h,{...row,...patch}),null);
+  assert.equal(volumeComparison({...h,quality:{marketOpen:false,confirmationPending:true}},row),null);
+  assert.equal(volumeComparison(h,{...row,quoteBarAt:null}),null);
 });
 test('weekly and monthly analyses exclude unfinished periods even after a daily session closes',()=>{
   const bars=[{time:'2026-11-09'},{time:'2026-11-16'}],context={timeZone:'America/New_York',now:Date.parse('2026-11-20T02:00:00Z')};assert.equal(completedAnalysisBars(bars,'W',false,context).length,1);

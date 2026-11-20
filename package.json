@@ -10,6 +10,7 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "test": "node --test tests/*.test.js",
+    "audit:quotes": "node scripts/audit-quotes.mjs",
     "prepare:alerts": "node scripts/sync-alert-worker.mjs",
     "prebuild": "node scripts/sync-alert-worker.mjs --check"
   },

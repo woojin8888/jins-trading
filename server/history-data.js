@@ -57,7 +57,7 @@ export function intradayQuality(info,bars,now=Date.now()){
   const last=bars.at(-1),date=last?sessionDate(last.time,info.timeZone):null,quote=info.quote;
   const priceMismatch=!!last&&Number.isFinite(quote.price)&&Math.abs(last.close-quote.price)>10**-quote.precision+1e-8;
   const sourceGapSeconds=last&&quote.asOf?Math.max(0,Date.parse(quote.asOf)/1000-last.endTime):null;
-  return {marketOpen:historyQuality(info,now).marketOpen,latestBarDate:date,expectedSessionDate:quote.sessionDate,missingLatestSession:!!date&&!!quote.sessionDate&&date<quote.sessionDate,priceMismatch,sourceGapSeconds,dataGap:priceMismatch&&sourceGapSeconds>60};
+  return {marketOpen:historyQuality(info,now).marketOpen,latestBarDate:date,expectedSessionDate:quote.sessionDate,missingLatestSession:!!date&&!!quote.sessionDate&&date<quote.sessionDate,priceMismatch,sourceGapSeconds,dataGap:sourceGapSeconds>60};
 }
 export function needsLatestSession(data){const quality=historyQuality(data);return !data.bars.length||quality.missingLatestSession||quality.priceMismatch;}
 export function mergeLatestSession(base,recent){
