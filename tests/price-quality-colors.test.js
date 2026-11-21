@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {historyQuality,mergeLatestSession,needsLatestSession,parseDailyHistory,sessionDate} from '../server/history-data.js';
 import {routeMarket} from '../server/market.js';
 import {SCAN_COLUMNS,scanRows} from '../server/rankings.js';
-import {CHART_COLORS,volumeColor,volumePoints} from '../src/chart-colors.js';
+import {CHART_COLORS,volumeColor,volumePoints,volumeDirection} from '../src/chart-colors.js';
 import {delayLabel,formatQuoteTime,quoteComparison} from '../src/quote-info.js';
 const seconds=value=>Date.parse(value)/1000;
 const meta={symbol:'NVDA',currency:'USD',exchangeTimezoneName:'America/New_York',regularMarketPrice:155.46,regularMarketTime:seconds('2026-11-17T21:00:00Z'),priceHint:2,currentTradingPeriod:{regular:{start:seconds('2026-11-17T14:30:00Z'),end:seconds('2026-11-17T21:00:00Z')}}};
@@ -44,11 +44,11 @@ test('failure to fetch the latest session preserves verified history with an exp
   const original=global.fetch;t.after(()=>{global.fetch=original;});global.fetch=async url=>new URL(url).searchParams.get('range')==='1d'?new Response('',{status:503}):Response.json({chart:{result:[raw()]}});
   const response=await routeMarket(new URL('https://test/api/market?symbol=NVDA')),data=await response.json();assert.equal(response.status,200);assert.equal(data.bars.length,1);assert.equal(data.quality.missingLatestSession,true);assert.equal(data.asOf,'2026-11-16');
 });
-test('volume colors use previous-candle volume independently of the candlestick price direction',()=>{
+test('volume colors follow candle direction even when volume change points the other way',()=>{
   const bars=[{time:'2026-11-16',open:100,close:110,volume:100},{time:'2026-11-17',open:110,close:100,volume:150},{time:'2026-11-18',open:100,close:110,volume:80}];const points=volumePoints(bars);
-  assert.equal(points[0].color,CHART_COLORS.neutral);assert.equal(points[1].color,CHART_COLORS.up);assert.equal(points[2].color,CHART_COLORS.down);assert.equal(points[1].value,150);assert.equal(CHART_COLORS.up,'#e5484d');assert.equal(CHART_COLORS.down,'#2878eb');
+  assert.equal(points[0].color,CHART_COLORS.up);assert.equal(points[1].color,CHART_COLORS.down);assert.equal(points[2].color,CHART_COLORS.up);assert.equal(points[1].value,150);assert.equal(CHART_COLORS.up,'#e5484d');assert.equal(CHART_COLORS.down,'#2878eb');
 });
-test('equal, zero and unknown previous volumes are handled distinctly without comparing across a missing bar',()=>{
-  assert.equal(volumeColor(100,100),CHART_COLORS.neutral);assert.equal(volumeColor(0,0),CHART_COLORS.neutral);assert.equal(volumeColor(10,0),CHART_COLORS.up);assert.equal(volumeColor(0,10),CHART_COLORS.down);assert.equal(volumeColor(10,null),CHART_COLORS.neutral);
-  const values=volumePoints([{time:'a',volume:100},{time:'b',volume:null},{time:'c',volume:150}]);assert.equal(values.length,2);assert.equal(values[1].color,CHART_COLORS.neutral);
+test('doji and real zero volume keep candle colors, missing volume stays absent, and volume-change calculations remain separate',()=>{
+  assert.equal(volumeColor({open:100,close:100}),CHART_COLORS.up);assert.equal(volumeColor({open:-20,close:-10}),CHART_COLORS.up);assert.equal(volumeColor({open:10,close:0}),CHART_COLORS.down);assert.equal(volumeColor({open:null,close:10}),CHART_COLORS.neutral);
+  const values=volumePoints([{time:'a',open:10,close:11,volume:0},{time:'b',open:11,close:10,volume:null},{time:'c',open:10,close:9,volume:150}]);assert.equal(values.length,2);assert.equal(values[0].value,0);assert.equal(values[0].color,CHART_COLORS.up);assert.equal(values[1].color,CHART_COLORS.down);assert.equal(volumeDirection(150,100),'up');assert.equal(volumeDirection(80,100),'down');
 });
