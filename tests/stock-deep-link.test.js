@@ -8,4 +8,7 @@ test('linked stock wins over a restored workspace while unrelated saved preferen
  const ordinary=linkedWorkspaceView(saved,null,null);assert.deepEqual(ordinary,saved);assert.equal(linkedWorkspaceView(saved,'kr',null).symbols.kr.symbol,saved.symbols.kr.symbol);
 });
 
-test('fullscreen startup is explicit and requires a valid chart target',()=>{assert(fullscreenFromSearch('?market=kr&symbol=471800&view=fullscreen'));assert(!fullscreenFromSearch('?market=kr&symbol=471800'));assert(!fullscreenFromSearch('?view=fullscreen'));assert(!fullscreenFromSearch('?market=kr&symbol=BAD&view=fullscreen'));});
+test('valid stock links fill the viewport by default, including older screener links; workspace remains an explicit opt-out',()=>{
+ for(const query of ['?market=kr&symbol=471800&view=fullscreen','?market=kr&symbol=471800','?market=us&symbol=NVDA','?market=etfkr&symbol=069500'])assert(fullscreenFromSearch(query));
+ for(const query of ['?view=fullscreen','?market=kr','?market=kr&symbol=BAD&view=fullscreen','?market=us&symbol=NVDA&view=workspace'])assert(!fullscreenFromSearch(query));
+});
