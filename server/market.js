@@ -1,5 +1,6 @@
 import {koreanDailyFallback} from './korean-history.js';
 import {repairKoreanIndexHistory} from './korean-index-repair.js';
+import {searchAllInstruments} from './unified-search.js';
 import {INTRADAY,parseIntraday} from './intraday-data.js';
 import {parseDailyHistory,needsLatestSession,mergeLatestSession,historyQuality} from './history-data.js';
 import {RANK_SORTS,scanRequest,scanRows,koreanStock} from './rankings.js';
@@ -83,7 +84,7 @@ export async function routeMarket(url){
     const board=url.searchParams.get('board')||'all';
     try{validateBoard(market,board);}catch(error){return reply({error:error.message},400);}
     if(action==='assets')return reply(await globalAssetRows(market,Number(url.searchParams.get('offset')||0),{fresh:url.searchParams.has('fresh')}));
-    if(action==='search'){try{return reply(await searchInstruments(url.searchParams.get('q')||'',market));}catch(error){return reply({error:error.message},400);}}
+    if(action==='search'){try{return reply(await (url.searchParams.get('scope')==='all'?searchAllInstruments(url.searchParams.get('q')||''):searchInstruments(url.searchParams.get('q')||'',market)));}catch(error){return reply({error:error.message},400);}}
     if(action==='universe')return reply(await universe(market,board));
     if(action==='rankings'){
       const sort=url.searchParams.get('sort')||'value',offset=Number(url.searchParams.get('offset')||0);

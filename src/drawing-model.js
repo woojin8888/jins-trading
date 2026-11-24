@@ -1,20 +1,22 @@
-export const DRAWING_TYPES=['horizontal','trend','rectangle','ellipse','arrow','text'];
-export const DRAWING_LABELS={horizontal:'지지·저항 수평선',trend:'추세선',rectangle:'사각형',ellipse:'원·타원',arrow:'화살표',text:'텍스트'};
+export const MEASUREMENT_TYPES=['priceRange','dateRange','datePriceRange'];
+export const isMeasurement=type=>MEASUREMENT_TYPES.includes(type);
+export const DRAWING_TYPES=['horizontal','trend','rectangle','ellipse','arrow','text',...MEASUREMENT_TYPES];
+export const DRAWING_LABELS={horizontal:'지지·저항 수평선',trend:'추세선',rectangle:'사각형',ellipse:'원·타원',arrow:'화살표',text:'텍스트',priceRange:'가격 범위',dateRange:'기간 범위',datePriceRange:'기간·가격 범위'};
 const DAY=86400000;
 export const drawingStorageKey=id=>'jins-trading:drawings:v1:'+id;
-const validPoint=p=>p&&Number.isFinite(p.time)&&p.time>=0&&p.time<8640000000000000&&Number.isFinite(p.price)&&p.price>0&&p.price<1e15;
+const validPoint=(p,signed=false)=>p&&Number.isFinite(p.time)&&p.time>=0&&p.time<8640000000000000&&Number.isFinite(p.price)&&(signed?Math.abs(p.price)<1e15:p.price>0&&p.price<1e15);
 export function normalizeDrawings(raw){
   if(raw?.version!==1||!Array.isArray(raw.items))return {version:1,items:[]};
   const ids=new Set();
   return {version:1,items:raw.items.slice(0,200).flatMap(row=>{
-    if(!row||typeof row.id!=='string'||ids.has(row.id.slice(0,100))||!DRAWING_TYPES.includes(row.type)||!Array.isArray(row.points)||row.points.length!==(row.type==='horizontal'||row.type==='text'?1:2)||!row.points.every(validPoint))return [];
+    if(!row||typeof row.id!=='string'||ids.has(row.id.slice(0,100))||!DRAWING_TYPES.includes(row.type)||!Array.isArray(row.points)||row.points.length!==(row.type==='horizontal'||row.type==='text'?1:2)||!row.points.every(point=>validPoint(point,isMeasurement(row.type))))return [];
     ids.add(row.id.slice(0,100));return [{id:row.id.slice(0,100),type:row.type,points:row.points.map(p=>({time:p.time,price:p.price,...(typeof p.dateOnly==='boolean'?{dateOnly:p.dateOnly}:{})})),color:/^#[\da-f]{6}$/i.test(row.color)?row.color:'#2463eb',width:[1,2,3,4].includes(row.width)?row.width:2,text:typeof row.text==='string'?row.text.slice(0,200):'',visible:row.visible!==false}];
   })};
 }
 export const timeStamp=time=>typeof time==='string'?Date.parse(time+'T00:00:00Z'):typeof time==='number'?time*1000:Date.UTC(time.year,time.month-1,time.day);
 function step(times){const deltas=times.slice(-31).slice(1).map((value,i)=>value-times.slice(-31)[i]).filter(n=>n>0).sort((a,b)=>a-b);return deltas[Math.floor(deltas.length/2)]||DAY;}
-export function anchorAtLogical(logical,price,times){
-  if(!times.length||!Number.isFinite(logical)||!Number.isFinite(price)||price<=0)return null;
+export function anchorAtLogical(logical,price,times,{allowSigned=false}={}){
+  if(!times.length||!Number.isFinite(logical)||!Number.isFinite(price)||!allowSigned&&price<=0)return null;
   const left=Math.floor(logical),fraction=logical-left;
   const time=logical<0?times[0]+logical*step(times):logical>times.length-1?times.at(-1)+(logical-times.length+1)*step(times):times[left]+fraction*((times[left+1]??times[left]+step(times))-times[left]);
   return {time,price};
@@ -33,7 +35,7 @@ export function projectDrawing(item,project){
 }
 export function translateDrawing(item,deltaTime,deltaPrice){
   const points=item.points.map(p=>({...p,time:p.time+deltaTime,price:p.price+deltaPrice}));
-  return points.every(validPoint)?{...item,points}:item;
+  return points.every(point=>validPoint(point,isMeasurement(item.type)))?{...item,points}:item;
 }
 
 export function drawingTimeMap(bars,timeZone='UTC'){
