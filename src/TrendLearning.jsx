@@ -1,5 +1,6 @@
 import React,{useEffect,useState} from 'react';
 import {formatBarTime} from './timeframes.js';
+import {CHART_TIME_ZONE} from './chart-timezone.js';
 
 function useChartRevision(api){
   const [,setRevision]=useState(0);
@@ -43,7 +44,7 @@ export function TrendLearningLayer({api}){
     {rows.map(row=><g key={row.id}>
       {row.future.length>1&&row.future[0].x<width&&row.future.at(-1).x>=0&&<><rect x={row.future[0].x} y={0} width={Math.max(0,width-row.future[0].x)} height={height} fill="#f3f4f6" opacity=".5"/><polyline className="learning-projection" points={row.future.map(p=>`${p.x},${p.y}`).join(' ')} fill="none" stroke={row.color} strokeWidth={row.width} strokeLinecap="round" strokeLinejoin="round" strokeDasharray="1 6"/><text x={Math.max(8,Math.min(row.future[0].x+8,width-170))} y={26} fill="#555" fontSize="11">가정 경로 · 원본 미확인</text></>}
       {row.signals.filter(s=>s.x>=0&&s.x<=width).map(s=><g key={s.confirmedTime} className="learning-low-signal" role="img" aria-label={`저점 ${s.price}, ${s.delay}봉 후 확인`}>
-        <title>{`저점 위치 ${formatBarTime(s.pivotTime,api.timeZone)} · 가격 ${s.price}\n확인 시점 ${formatBarTime(s.confirmedTime,api.timeZone)} · ${s.delay}봉 후 확인. 이후 더 낮은 저점이 생길 수 있습니다.`}</title>
+        <title>{`저점 위치 ${formatBarTime(s.pivotTime,CHART_TIME_ZONE)} · 가격 ${s.price}\n확인 시점 ${formatBarTime(s.confirmedTime,CHART_TIME_ZONE)} · ${s.delay}봉 후 확인. 이후 더 낮은 저점이 생길 수 있습니다.`}</title>
         {row.showPivotOrigin&&<><line x1={s.originX} y1={s.originY} x2={s.x} y2={s.y} stroke="#12846c" strokeDasharray="2 3"/><circle cx={s.originX} cy={s.originY} r={3} fill="#fff" stroke="#12846c"/></>}
         <path d={`M ${s.x} ${s.y-5} l -5 9 h 10 Z`} fill="#12846c"/><text x={s.x-22} y={s.y+18} fontSize="10" fill="#12846c">저점 확인</text>
       </g>)}
@@ -64,7 +65,7 @@ export function TrendLearningGuide({api,studies,onEdit}){
       <p><b>2. 미래 점선:</b> 과거 {p.pattern}봉의 평활 파동을 현재 수준으로 옮겨 그립니다. 같은 파동이 반복된다는 가정이며 예측력은 검증하지 않았습니다. 표시 범위는 최대 {Math.min(p.pattern,p.horizon)}봉입니다. 실제 미래 날짜·체결가·캔들은 만들지 않습니다. 새 확정 봉이 추가되면 가정 경로도 다시 계산됩니다.</p>
       <code>가정값(t+h) = S(t) + S(t−파동길이+h) − S(t−파동길이)</code>
       <p><b>3. 저점 확인:</b> 후보 저가가 왼쪽 {p.left}개 봉의 저가보다 모두 낮고, 오른쪽 {p.right}개 확정 봉의 저가보다 높지 않으면 확인합니다. 표식은 후보 봉이 아닌 확인된 봉에 표시합니다. 더 낮은 저점이 뒤에 생길 수 있어 바닥 예측·매수 신호로 해석하지 않습니다.{p.showPivotOrigin&&' 동그라미로 표시한 과거 저점 위치는 사후 확인한 위치입니다.'}</p>
-      {!!model?.signals.length&&<div className="learning-signals-table"><table><caption>최근 확인된 저점 · 당시 알 수 있었던 시점</caption><thead><tr><th>저점 봉</th><th>저점 가격</th><th>확인된 봉</th></tr></thead><tbody>{model.signals.slice(-3).map(s=><tr key={s.confirmedTime}><td>{formatBarTime(s.pivotTime,api.timeZone)}</td><td>{s.price.toLocaleString('ko-KR',{maximumFractionDigits:4})}</td><td>{formatBarTime(s.confirmedTime,api.timeZone)} · {s.delay}봉 후</td></tr>)}</tbody></table></div>}
+      {!!model?.signals.length&&<div className="learning-signals-table"><table><caption>최근 확인된 저점 · 당시 알 수 있었던 시점</caption><thead><tr><th>저점 봉</th><th>저점 가격</th><th>확인된 봉</th></tr></thead><tbody>{model.signals.slice(-3).map(s=><tr key={s.confirmedTime}><td>{formatBarTime(s.pivotTime,CHART_TIME_ZONE)}</td><td>{s.price.toLocaleString('ko-KR',{maximumFractionDigits:4})}</td><td>{formatBarTime(s.confirmedTime,CHART_TIME_ZONE)} · {s.delay}봉 후</td></tr>)}</tbody></table></div>}
       {model&&<p className="learning-sample-status">확정 자료 {model.availableBars.toLocaleString('ko-KR')}봉 · {model.projectionLength?`가정 경로 ${model.projectionLength}봉`:p.showProjection?`경로 계산에 최소 ${model.requiredBars}봉 필요`:'가정 경로 숨김'} · 확인된 저점 {model.signals.length}개. 누락이 있으면 제공된 봉 수를 기준으로 계산합니다.</p>}
       <div className="learning-guide-actions"><button type="button" disabled={!model?.projectionLength} onClick={reveal}>가정 경로 보기</button><button type="button" onClick={()=>onEdit?.(study.id)}>학습 지표 설정</button><a href="https://www.tradingview.com/pine-script-docs/concepts/repainting/#plotting-in-the-past" target="_blank" rel="noreferrer">TradingView의 사후 피벗 표시 설명</a></div>
     </div></details>;

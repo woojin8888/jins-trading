@@ -1,3 +1,4 @@
+import {CHART_TIME_ZONE} from './chart-timezone.js';
 import React,{useEffect,useId,useLayoutEffect,useMemo,useRef,useState} from 'react';
 import {ArrowUpRight,ArrowUpDown,ArrowLeftRight,Move,ChevronDown,Circle,Eye,EyeOff,Minus,MousePointer2,Redo2,Square,Trash2,TrendingUp,Type,Undo2,X} from 'lucide-react';
 import {anchorAtLogical,DRAWING_LABELS,drawingStorageKey,logicalAtTime,normalizeDrawings,projectDrawing,timeStamp,translateDrawing,drawingTimeMap,chartAnchorTime,isMeasurement} from './drawing-model.js';
@@ -75,7 +76,7 @@ export function DrawingLayer({api,drawing}){
   },[]);
   const times=useMemo(()=>api?.data.map(bar=>timeStamp(bar.time))||[],[api,api?.data]);
   const timeMap=useMemo(()=>drawingTimeMap(api?.data||[],api?.timeZone||'UTC'),[api,api?.data,api?.timeZone]);
-  const measureContext=useMemo(()=>measurementContext(api?.data||[],api?.timeZone||'UTC',api?.candles.options().priceFormat.precision??2),[api,api?.data,api?.timeZone]);
+  const measureContext=useMemo(()=>measurementContext(api?.data||[],api?.timeZone||'UTC',api?.candles.options().priceFormat.precision??2,CHART_TIME_ZONE),[api,api?.data,api?.timeZone]);
   if(!api||api.disposed||!api.data.length)return null;
   const plotWidth=Math.max(0,api.chart.timeScale().width()),height=api.chart.panes()[0].getHeight();
   function project(point){const logical=logicalAtTime(chartAnchorTime(point,timeMap),times),x=api.chart.timeScale().logicalToCoordinate(logical),y=api.candles.priceToCoordinate(point.price);return x===null||y===null?null:{x,y};}

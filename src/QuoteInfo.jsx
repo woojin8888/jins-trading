@@ -1,4 +1,5 @@
 import React from 'react';
+import {CHART_TIME_ZONE,CHART_TIME_ZONE_LABEL} from './chart-timezone.js';
 import {timeframeLabel,formatBarTime} from './timeframes.js';
 import {delayLabel,formatQuoteTime,quoteComparison,quoteFreshness,elapsedLabel,volumeComparison} from './quote-info.js';
 import {formatPrice,assetKind} from './instruments.js';
@@ -33,9 +34,9 @@ export default function QuoteInfo({history,quoteHistory,dailyHistory,listQuote,s
     {quality.missingSourceBars>0&&<p role="status">응답에 포함된 거래일의 정규장 시간격자에서 원본 {quality.missingSourceBars.toLocaleString('ko-KR')}봉이 미제공되었습니다 ({quality.affectedSessions.toLocaleString('ko-KR')}개 세션). 거래정지·무체결·제공처 누락 여부는 확정하지 않았으며 0거래량이나 가상 봉으로 채우지 않습니다. 조회 시작 이전과 아직 도달하지 않은 시각은 제외합니다. 지표와 매물대도 제공된 봉만 사용하므로 전체 자료로 계산한 값과 다를 수 있습니다.</p>}
     {quality.incompleteGroups>0&&<p role="status">실제 원본이 끝까지 없는 집계 봉 {quality.incompleteGroups.toLocaleString('ko-KR')}개를 제외했습니다. 일부 데이터만으로 정규장 종료까지 완성된 4시간봉을 만들지 않습니다.</p>}
     {quality.providerSessionDiffers&&<p role="status">제공처의 한국장 세션 종료 표기가 실제 정규장 종료와 다릅니다. 실제 마감까지 원본이 있는지 별도로 확인합니다.</p>}
-    <dl><dt>{['stock','etf'].includes(assetKind(history.symbol))?'정규장 최신 시세':'제공처 최신 시세'}</dt><dd>{price(quote?.price)} {latest.currency}</dd>
+    <dl><dt>차트 표시 시간대</dt><dd>{CHART_TIME_ZONE_LABEL} · 분봉은 봉 시작 시각, 일·주·월봉 날짜와 계산은 거래소 거래일 기준</dd><dt>{['stock','etf'].includes(assetKind(history.symbol))?'정규장 최신 시세':'제공처 최신 시세'}</dt><dd>{price(quote?.price)} {latest.currency}</dd>
       <dt>전일 기준값</dt><dd>{price(quote?.previousClose)} {latest.currency} · {assetKind(history.symbol)==='future'?'제공처 전일 정산·종가 기준':assetKind(history.symbol)==='fx'?'제공처 거래일 기준':'정규장 기준'}{!Number.isFinite(quote?.previousClose)&&' · 미제공 시 등락률을 계산하지 않습니다.'}</dd>
-      <dt>차트 최근 {barLabel}</dt><dd>{intraday?formatBarTime(history.bars.at(-1)?.time,history.timeZone):history.asOf} · 종가 {formatPrice(history.bars.at(-1)?.close,history.currency,history.quote?.precision??2)} {history.currency}{quality.confirmationPending?' · 제공처 마감 확인 대기':quality.sessionOpen?' · 진행 중':''}</dd>
+      <dt>차트 최근 {barLabel}</dt><dd>{intraday?formatBarTime(history.bars.at(-1)?.time,CHART_TIME_ZONE)+' KST':history.asOf} · 종가 {formatPrice(history.bars.at(-1)?.close,history.currency,history.quote?.precision??2)} {history.currency}{quality.confirmationPending?' · 제공처 마감 확인 대기':quality.sessionOpen?' · 진행 중':''}</dd>
       <dt>가격 제공처 시각</dt><dd>{formatQuoteTime(quote?.asOf)}</dd><dt>차트 제공처</dt><dd>{history.source||'Yahoo Finance · 정규장 · 배당 미보정'}</dd><dt>차트 조회 시각</dt><dd>{formatQuoteTime(history.fetchedAt)}</dd>
       {intraday&&<><dt>원본 구간 점검</dt><dd>{quality.sourceCoverageChecked?`정규장 시간격자 점검 · 미제공 ${quality.missingSourceBars||0}봉`:'제공처 휴장·중간 휴식 유지 · 전체 구간 완전성 미확인'}</dd></>}
       {listQuote&&<><dt>목록 최근 가격</dt><dd>{formatPrice(listQuote.price,listQuote.currency||history.currency,listQuote.precision??2)} {listQuote.currency||history.currency} · {delayLabel(listQuote)}</dd><dt>목록 가격·최근 1분봉 기준</dt><dd>{formatQuoteTime(listQuote.quoteBarAt||listQuote.asOf)}</dd><dt>목록 제공처</dt><dd>{listQuote.provider||'TradingView Screener'}</dd></>}

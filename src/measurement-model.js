@@ -1,8 +1,9 @@
 import {chartAnchorTime,drawingTimeMap,logicalAtTime,timeStamp} from './drawing-model.js';
+import {formatBarTime} from './timeframes.js';
 
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
-export function measurementContext(bars,timeZone='UTC',precision=2){
-  return {times:bars.map(bar=>timeStamp(bar.time)),map:drawingTimeMap(bars,timeZone),precision};
+export function measurementContext(bars,timeZone='UTC',precision=2,displayTimeZone=timeZone){
+  return {times:bars.map(bar=>timeStamp(bar.time)),map:drawingTimeMap(bars,timeZone),precision,displayTimeZone};
 }
 export function measurementValues(points,context){
   if(points.length!==2||!context.times.length)return null;
@@ -22,7 +23,7 @@ export function elapsedMeasurement(milliseconds){
 export function measurementDetails(row,context){
   const value=measurementValues(row.points,context);if(!value)return null;
   const precision=Math.min(8,Math.max(0,context.precision)),price=n=>n.toLocaleString('ko-KR',{maximumFractionDigits:precision});
-  const date=time=>context.map.intraday?new Date(time).toLocaleString('sv-SE',{timeZone:context.map.formatter.resolvedOptions().timeZone,month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):new Date(time).toISOString().slice(0,10);
+  const date=time=>context.map.intraday?formatBarTime(time/1000,context.displayTimeZone||context.map.formatter.resolvedOptions().timeZone):new Date(time).toISOString().slice(0,10);
   const lines=[];
   if(row.type!=='dateRange'){
     lines.push(`${price(value.startPrice)} → ${price(value.endPrice)}`);
