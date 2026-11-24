@@ -316,3 +316,7 @@ Vercel: Vite / build `npm run build` / output `dist` / Node.js 24. 새 Supabase 
 차트는 TradingView의 Apache-2.0 라이선스 [Lightweight Charts](https://github.com/tradingview/lightweight-charts)를 사용합니다. 라이브러리 기본 TradingView attribution을 유지하고 차트 아래에도 제공자 링크를 표시합니다. 이 사이트는 TradingView 공식 제품이 아닙니다.
 
 매물대 기본 색상은 연한 회색입니다. 이전 기본 하늘색 설정은 회색으로 이관하고 직접 지정한 다른 색상은 유지합니다.
+
+## 미국 지수의 제공처 집계 거래량
+
+S&P 500(`^GSPC`)·나스닥 100(`^NDX`)·러셀 2000(`^RUT`)은 Yahoo Finance가 일봉·분봉에 반환하는 양의 집계 거래량을 가격 차트에 표시합니다. 지수 자체의 체결량이나 구성종목별 집계 범위·단위가 검증된 값으로 취급하지 않으며, 화면과 시세 상세에 제공처 집계임을 명시합니다. 숫자에 임의로 ‘주’ 단위를 붙이지 않습니다. 제공처가 0을 반환하거나 값이 없으면 미확인(null/—)으로 표시하고, 일봉 API에는 `rawVolume`으로 반환 원본을 남깁니다. 주·월·4시간 합산 중 미확인 값이 있으면 합계를 만들지 않습니다. 같은 가격의 가상 거래량이나 ETF·선물 거래량으로 채우지 않고, 지수 매물대와 외부 거래량 일치 판정에는 사용하지 않습니다. 기존 개별주식·ETF·선물의 실제 0거래량은 그대로 유지합니다.

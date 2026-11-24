@@ -26,6 +26,7 @@ function localDate(value,timeZone){
   return Number.isFinite(Date.parse(value))?new Date(value).toLocaleDateString('sv-SE',{timeZone:timeZone||'UTC'}):null;
 }
 export function volumeComparison(history,row){
+  if(history?.volumeBasis?.kind==='provider-aggregate')return null;
   const bar=history?.bars?.at(-1);
   if(history?.quality?.intraday||history?.quality?.marketOpen!==false||history.quality.sessionOpen||history.quality.confirmationPending||!Number.isFinite(bar?.volume)||!Number.isFinite(row?.volume)||row.volume<0||explicitExtended(row))return null;
   if(!history.currency||!row.currency||history.currency!==row.currency||row.symbol&&history.symbol!==row.symbol)return null;

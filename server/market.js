@@ -51,7 +51,7 @@ async function history(symbol,range='2y',marketForSymbolCheck=null){
       data=await repairKoreanIndexHistory(data,symbol);
       data=await repairKoreanStockHistory(data,symbol);
       const localizedName=await nativeName;
-      return {symbol,assetType:assetKind(symbol),volumeUnit:volumeUnit(symbol),unit:knownAsset(symbol)?.unit||'',name:localizedName||data.meta.longName||data.meta.shortName||symbol,koreanName:localizedName,currency:data.meta.currency,bars:data.bars,asOf:data.bars.at(-1).time,quote:data.quote,timeZone:data.timeZone,quality:{...historyQuality(data),volumeUnavailable:!hasVolume(symbol)},fetchedAt:new Date().toISOString(),source:'Yahoo Finance · 제공처 세션 일봉 · 배당 보정 미적용'+(data.dailyRepairSource?' · 누락 일봉 보완: '+data.dailyRepairSource:'')};
+      return {symbol,assetType:assetKind(symbol),volumeUnit:volumeUnit(symbol),unit:knownAsset(symbol)?.unit||'',name:localizedName||data.meta.longName||data.meta.shortName||symbol,koreanName:localizedName,currency:data.meta.currency,bars:data.bars,volumeBasis:data.volumeBasis,asOf:data.bars.at(-1).time,quote:data.quote,timeZone:data.timeZone,quality:{...historyQuality(data),volumeUnavailable:!hasVolume(symbol)},fetchedAt:new Date().toISOString(),source:'Yahoo Finance · 제공처 세션 일봉 · 배당 보정 미적용'+(data.volumeBasis?' · 지수 거래량: 제공처 집계 · 단위/구성종목 범위 미확인':'')+(data.dailyRepairSource?' · 누락 일봉 보완: '+data.dailyRepairSource:'')};
     }catch(error){lastError=error;}
   }
   if(marketForSymbolCheck?.kind==='stock'&&/^\d{6}\.(KS|KQ)$/.test(symbol)){const fallback=await koreanDailyFallback(symbol,await nativeName);if(fallback)return fallback;}

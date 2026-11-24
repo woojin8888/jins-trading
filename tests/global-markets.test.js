@@ -25,7 +25,7 @@ test('world indices, FX and futures have distinct identities, units and validate
  assert.throws(()=>parseDailyHistory(source('7203.T','USD','Asia/Tokyo'),'7203.T'),/통화/);assert.equal(parseDailyHistory(source('AZN.L','GBp','Europe/London'),'AZN.L').quote.currency,'GBp');
 });
 test('index and FX bars never fabricate tradable volume while ETF and futures keep their actual volume',()=>{
- for(const symbol of ['^GSPC','^N225','KRW=X','DX-Y.NYB']){const currency=expectedCurrencies(symbol)[0],history=parseDailyHistory(source(symbol,currency,'UTC'),symbol);assert.ok(history.bars.every(b=>b.volume===null));assert.equal(hasVolume(symbol),false);}
+ for(const symbol of ['^N225','KRW=X','DX-Y.NYB']){const currency=expectedCurrencies(symbol)[0],history=parseDailyHistory(source(symbol,currency,'UTC'),symbol);assert.ok(history.bars.every(b=>b.volume===null));assert.equal(hasVolume(symbol),false);}
  for(const symbol of ['GC=F','SPY','069500.KS'])assert.equal(parseDailyHistory(source(symbol,expectedCurrencies(symbol)[0],'UTC'),symbol).bars[0].volume,100);
  assert.equal(formatVolume(12345,'korean','계약'),'1.2만계약');
 });

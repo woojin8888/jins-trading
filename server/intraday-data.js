@@ -1,5 +1,5 @@
 import {parseGlobalIntraday} from './global-intraday.js';
-import {assetKind,hasVolume} from '../src/instruments.js';
+import {assetKind,hasVolume,reportedVolume,indexVolumeBasis,isIndexAggregateVolume} from '../src/instruments.js';
 import {parseDailyHistory,intradayQuality} from './history-data.js';
 import {sessionCoverage} from './session-coverage.js';
 export const INTRADAY={ '15m':{source:'15m',range:'1mo',seconds:900},'30m':{source:'30m',range:'1mo',seconds:1800},'1h':{source:'60m',range:'2y',seconds:3600},'4h':{source:'60m',range:'2y',seconds:14400}};
@@ -25,7 +25,7 @@ export function parseIntraday(result,symbol,interval){
     if(time<start||time>=end){snapshots++;continue;}
     if((time-start)%sourceSeconds!==0){snapshots++;continue;}
     observedSessions.push({start,end});
-    const bar={time,open:q.open?.[i],high:q.high?.[i],low:q.low?.[i],close:q.close?.[i],volume:hasVolume(symbol)&&Number.isFinite(q.volume?.[i])&&q.volume[i]>=0?q.volume[i]:null,sessionStart:start,sessionEnd:end,providerEnd,endTime:Math.min(time+sourceSeconds,end)};
+    const bar={time,open:q.open?.[i],high:q.high?.[i],low:q.low?.[i],close:q.close?.[i],volume:reportedVolume(symbol,q.volume?.[i]),sessionStart:start,sessionEnd:end,providerEnd,endTime:Math.min(time+sourceSeconds,end)};
     if(![bar.open,bar.high,bar.low,bar.close].every(n=>Number.isFinite(n)&&n>0)||bar.high<Math.max(bar.open,bar.close)||bar.low>Math.min(bar.open,bar.close)){invalid++;continue;}
     // A flat zero-volume closing snapshot at Yahoo's erroneous KRX 15:00
     // boundary is not a real 15:00–15:15/15:30 candle or a missing closing hour.
@@ -45,5 +45,5 @@ export function parseIntraday(result,symbol,interval){
     });
   }
   if(!unique.length)throw Error('분봉 데이터가 제공되지 않거나 유효한 정규장 봉이 없습니다. 일봉을 선택해 주세요.');
-  return {symbol,currency:result.meta.currency,timeZone,interval,bars:unique,asOf:new Date(unique.at(-1).time*1000).toISOString(),quote:info.quote,quality:{intraday:true,sessionOpen:unique.at(-1).complete===false,...intradayQuality(info,unique),...sourceCoverage,invalidBarCount:invalid,snapshotQuotesSkipped:snapshots,incompleteGroups,providerSessionDiffers,regularSessionOnly:true},coverage:{from:new Date(unique[0].time*1000).toISOString(),to:new Date(unique.at(-1).time*1000).toISOString(),sourceInterval:config.source,range:config.range},source:`Yahoo Finance · 정규장 ${interval}${interval==='4h'?' (1시간봉 집계)':''} · 배당 보정 미적용`};
+  return {symbol,currency:result.meta.currency,timeZone,interval,volumeBasis:indexVolumeBasis(symbol),bars:unique,asOf:new Date(unique.at(-1).time*1000).toISOString(),quote:info.quote,quality:{intraday:true,sessionOpen:unique.at(-1).complete===false,...intradayQuality(info,unique),...sourceCoverage,invalidBarCount:invalid,snapshotQuotesSkipped:snapshots,incompleteGroups,providerSessionDiffers,regularSessionOnly:true},coverage:{from:new Date(unique[0].time*1000).toISOString(),to:new Date(unique.at(-1).time*1000).toISOString(),sourceInterval:config.source,range:config.range},source:`Yahoo Finance · 정규장 ${interval}${interval==='4h'?' (1시간봉 집계)':''} · 배당 보정 미적용`};
 }

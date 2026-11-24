@@ -1,4 +1,4 @@
-import {expectedCurrencies,assetKind,knownAsset,hasVolume,volumeUnit} from '../src/instruments.js';
+import {expectedCurrencies,assetKind,knownAsset,hasVolume,volumeUnit,reportedVolume,indexVolumeBasis,isIndexAggregateVolume} from '../src/instruments.js';
 const validPrice=n=>Number.isFinite(n)&&n>0;
 const iso=seconds=>Number.isFinite(seconds)&&seconds>0?new Date(seconds*1000).toISOString():null;
 // Yahoo sometimes returns the explicit USD pair for these documented short codes.
@@ -34,14 +34,14 @@ export function parseDailyHistory(result,symbol){
   if(meta.currency&&!currencies.includes(meta.currency))throw Error('시세 통화가 요청한 시장과 다릅니다.');
   const values=result.indicators?.quote?.[0]||{},bars=[],invalidBarDates=[];let invalidBarCount=0;
   for(const [i,timestamp] of (result.timestamp||[]).entries()){
-    const bar={time:sessionDate(timestamp,timeZone),open:values.open?.[i],high:values.high?.[i],low:values.low?.[i],close:values.close?.[i],volume:hasVolume(symbol)&&Number.isFinite(values.volume?.[i])&&values.volume[i]>=0?values.volume[i]:null};
+    const bar={time:sessionDate(timestamp,timeZone),open:values.open?.[i],high:values.high?.[i],low:values.low?.[i],close:values.close?.[i],volume:reportedVolume(symbol,values.volume?.[i]),...(isIndexAggregateVolume(symbol)?{rawVolume:Number.isFinite(values.volume?.[i])?values.volume[i]:null}:{})};
     if(!bar.time||![bar.open,bar.high,bar.low,bar.close].every(priceValid)||bar.high<Math.max(bar.open,bar.close)||bar.low>Math.min(bar.open,bar.close)){invalidBarCount++;if(bar.time)invalidBarDates.push(bar.time);continue;}
     bars.push(bar);
   }
   const unique=[...new Map(bars.map(bar=>[bar.time,bar])).values()].sort((a,b)=>a.time.localeCompare(b.time));
   const quoteAt=iso(meta.regularMarketTime),precision=Number.isInteger(meta.priceHint)&&meta.priceHint>=0&&meta.priceHint<=8?meta.priceHint:expectedCurrency==='KRW'?0:2;
   const price=priceValid(meta.regularMarketPrice)?meta.regularMarketPrice:null,regular=regularSession(meta,symbol);
-  return {bars:unique,meta,timeZone,invalidBarCount,invalidBarDates:[...new Set(invalidBarDates)].sort(),quote:{price,...quoteChange(meta,price),asOf:quoteAt,sessionDate:quoteAt?sessionDate(meta.regularMarketTime,timeZone):null,currency:meta.currency||null,precision,session:'regular',provider:'Yahoo Finance',providerSymbol:meta.symbol||symbol,regularStart:iso(regular?.start),regularEnd:iso(regular?.end)}};
+  return {bars:unique,meta,timeZone,volumeBasis:indexVolumeBasis(symbol),invalidBarCount,invalidBarDates:[...new Set(invalidBarDates)].sort(),quote:{price,...quoteChange(meta,price),asOf:quoteAt,sessionDate:quoteAt?sessionDate(meta.regularMarketTime,timeZone):null,currency:meta.currency||null,precision,session:'regular',provider:'Yahoo Finance',providerSymbol:meta.symbol||symbol,regularStart:iso(regular?.start),regularEnd:iso(regular?.end)}};
 }
 export function historyQuality(data,now=Date.now()){
   const latest=data.bars.at(-1),quote=data.quote,missingLatestSession=!!(latest&&quote.sessionDate&&latest.time<quote.sessionDate),sameSession=!!latest&&latest.time===quote.sessionDate;

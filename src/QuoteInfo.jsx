@@ -20,7 +20,7 @@ export default function QuoteInfo({history,quoteHistory,dailyHistory,listQuote,s
     <span className="quote-summary-time">가격 기준 {formatQuoteTime(quote?.asOf)} · {elapsedLabel(freshness.ageSeconds)}</span>
     <span>{freshness.marketOpen===false?'거래시간 밖 · 마지막 시세':freshness.marketOpen===true?'제공처 거래시간 중':'거래시간 정보 미제공'}</span>
     <span>{autoRefresh?'1분 자동 갱신':'자동 갱신 꺼짐'}</span><span>상세 보기</span>
-  </summary><div className="quote-provenance-body">
+  </summary><div className="quote-provenance-body">{history.volumeBasis?.kind==='provider-aggregate'&&<p>지수 거래량은 Yahoo Finance가 해당 지수에 반환한 집계값입니다. 구성종목별 체결량과 집계 단위는 확인되지 않았으며, TradingView의 거래량과 같다고 보장하지 않습니다. 0 반환은 실제 0거래량으로 확정하지 않고 미확인(—)으로 표시합니다.</p>}
     {quality.missingDailyDates?.length>0&&<p role="status">제공처가 날짜는 반환했지만 유효한 OHLC를 제공하지 않은 일봉: {quality.missingDailyDates.join(', ')}. 지표도 실제 받은 봉만 사용하므로 누락이 없는 자료와 계산값이 다를 수 있습니다.</p>}
     {quality.repairedDailyDates?.length>0&&<p>일봉 보완: {quality.repairedDailyDates.join(', ')} · {quality.dailyRepairSource}. 종목과 주변 두 거래일의 가격 단위를 대조한 뒤 빈 날짜만 보완했습니다. 상단 최신 가격과 가격 기준 시각은 기존 제공처 기준입니다.</p>}
     {quality.dailyRepairs?.map(repair=><p key={repair.date}>{repair.date}: {repair.source} · {repair.verifiedWith}. 거래량 {repair.sourceVolume.toLocaleString('ko-KR')}주{repair.volumeDifferent?` · 비교 출처와 거래량 차이${Number.isFinite(repair.volumeDifferencePercent)?' '+repair.volumeDifferencePercent.toFixed(2)+'%':''} (출처별 집계 차이 가능)`:''}. 해당 봉의 OHLC와 거래량은 같은 출처의 원본을 사용합니다.</p>)}

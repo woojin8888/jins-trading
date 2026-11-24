@@ -41,8 +41,11 @@ export function expectedCurrencies(symbol){
  if(/\.T$/.test(symbol))return ['JPY'];if(/\.HK$/.test(symbol))return ['HKD'];if(/\.(SS|SZ)$/.test(symbol))return ['CNY'];
  if(/\.L$/.test(symbol))return ['GBp','GBP'];if(/\.(DE|PA)$/.test(symbol))return ['EUR'];if(/\.TO$/.test(symbol))return ['CAD'];if(/\.AX$/.test(symbol))return ['AUD'];if(/\.NS$/.test(symbol))return ['INR'];if(/\.(TW|TWO)$/.test(symbol))return ['TWD'];if(/\.SI$/.test(symbol))return ['SGD'];return ['USD'];
 }
-export const volumeUnit=symbol=>assetKind(symbol)==='future'?'계약':'주';
-export const hasVolume=symbol=>!['index','fx'].includes(assetKind(symbol));
+export const isIndexAggregateVolume=symbol=>['^GSPC','^NDX','^RUT'].includes(symbol);
+export const volumeUnit=symbol=>isIndexAggregateVolume(symbol)?'':assetKind(symbol)==='future'?'계약':'주';
+export const hasVolume=symbol=>isIndexAggregateVolume(symbol)||!['index','fx'].includes(assetKind(symbol));
+export function reportedVolume(symbol,value){return hasVolume(symbol)&&Number.isFinite(value)&&value>=0&&(!isIndexAggregateVolume(symbol)||value>0)?value:null;}
+export const indexVolumeBasis=symbol=>isIndexAggregateVolume(symbol)?{kind:'provider-aggregate',provider:'Yahoo Finance',unit:null,constituentVolumeVerified:false,zeroPolicy:'unconfirmed'}:null;
 export const currencyLabel=c=>c==='GBp'?'GBp · 영국 펜스':c||'통화 미제공';
 export function formatPrice(value,currency='USD',precision=2){return Number.isFinite(value)?value.toLocaleString('ko-KR',{minimumFractionDigits:0,maximumFractionDigits:Math.min(8,Math.max(0,precision))}):'—';}
 export const defaultSymbols=()=>Object.fromEntries(Object.entries(MARKETS).map(([id,m])=>[id,{symbol:m.symbol,name:m.name}]));
