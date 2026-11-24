@@ -1,6 +1,6 @@
 // Keep the chart in its existing DOM node, so zoom, indicators and drawings survive.
-export function createChartFullscreen(target,onChange,{document:doc=globalThis.document,window:win=globalThis.window}={}){
-  let state={active:false,mode:'none',pending:false},disposed=false,wanted=false,operation=0,saved=null;
+export function createChartFullscreen(target,onChange,{document:doc=globalThis.document,window:win=globalThis.window,deferRestore=false}={}){
+  let state={active:false,mode:'none',pending:false},disposed=false,wanted=false,operation=0,saved=null,pendingRestore=null;
   const owner=()=>doc.fullscreenElement||doc.webkitFullscreenElement;
   const emit=value=>{state=value;if(!disposed)onChange(state);};
   function lockPage(){
@@ -14,14 +14,12 @@ export function createChartFullscreen(target,onChange,{document:doc=globalThis.d
     if(!saved)return;const previous=saved;saved=null;
     doc.body.style.overflow=previous.bodyOverflow;doc.documentElement.style.overflow=previous.rootOverflow;
     for(const [element,inert] of previous.inert)element.inert=inert;
-    if(restoreFocus){
-      // React must first clear pending/disabled on the entry button. Focusing
-      // during fullscreenchange otherwise silently fails in real browsers.
-      const restore=()=>{if(disposed||state.active)return;if(previous.focus?.isConnected!==false)previous.focus?.focus?.({preventScroll:true});win?.scrollTo?.(previous.x,previous.y);};
-      if(win?.requestAnimationFrame)win.requestAnimationFrame(restore);
-      else {if(previous.focus?.isConnected!==false)previous.focus?.focus?.({preventScroll:true});win?.scrollTo?.(previous.x,previous.y);}
-    }
+    if(restoreFocus){if(deferRestore)pendingRestore=previous;else restorePage(previous);}
   }
+  function restorePage(previous){if(previous.focus?.isConnected!==false)previous.focus?.focus?.({preventScroll:true});win?.scrollTo?.(previous.x,previous.y);}
+  // React calls this after the normal layout has committed. Before that,
+  // the original button can still be disabled or hidden by fullscreen CSS.
+  function restoreFocus(){if(disposed||state.active||!pendingRestore)return;const previous=pendingRestore;pendingRestore=null;restorePage(previous);}
   function reset(restoreFocus=true){unlockPage(restoreFocus);emit({active:false,mode:'none',pending:false});}
   function exitNative(){const exit=doc.exitFullscreen||doc.webkitExitFullscreen;try{return exit?Promise.resolve(exit.call(doc)):Promise.resolve();}catch(error){return Promise.reject(error);}}
   function changed(){
@@ -33,7 +31,7 @@ export function createChartFullscreen(target,onChange,{document:doc=globalThis.d
   }
   function enter(){
     if(disposed||state.active||state.pending)return Promise.resolve();
-    const current=++operation;wanted=true;lockPage();emit({active:true,mode:'viewport',pending:false});
+    const current=++operation;wanted=true;pendingRestore=null;lockPage();emit({active:true,mode:'viewport',pending:false});
     const request=target.requestFullscreen||target.webkitRequestFullscreen,enabled=target.requestFullscreen?doc.fullscreenEnabled:doc.webkitFullscreenEnabled;
     if(!request||enabled===false||owner()&&owner()!==target)return Promise.resolve();
     emit({active:true,mode:'viewport',pending:true});
@@ -62,8 +60,8 @@ export function createChartFullscreen(target,onChange,{document:doc=globalThis.d
     if(event.key==='Enter'&&event.altKey&&(state.active||target.contains(doc.activeElement))){event.preventDefault();toggle();}
   }
   doc.addEventListener('fullscreenchange',changed);doc.addEventListener('webkitfullscreenchange',changed);doc.addEventListener('keydown',keydown);
-  return {enter,exit,toggle,getState:()=>state,dispose:()=>{
-    if(disposed)return;disposed=true;wanted=false;operation++;
+  return {enter,exit,toggle,restoreFocus,getState:()=>state,dispose:()=>{
+    if(disposed)return;disposed=true;wanted=false;pendingRestore=null;operation++;
     doc.removeEventListener('fullscreenchange',changed);doc.removeEventListener('webkitfullscreenchange',changed);doc.removeEventListener('keydown',keydown);
     unlockPage(false);if(owner()===target){try{exitNative().catch(()=>{});}catch{}}
   }};

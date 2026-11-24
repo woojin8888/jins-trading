@@ -52,17 +52,17 @@ test('WebKit-prefixed fullscreen events and methods use the same cleanup and ret
   await h.controller.enter();assert.equal(h.controller.getState().mode,'native');await h.controller.exit();assert.equal(h.controller.getState().active,false);assert.equal(h.doc.body.style.overflow,'auto');h.controller.dispose();
 });
 
-test('focus restoration waits for the closing button state to settle and ignores a new fullscreen entry',async()=>{
-  const h=setup(),frames=[];
-  // The production window schedules after React clears pending/disabled.
+test('deferred focus restoration follows the UI commit and ignores a new fullscreen entry',async()=>{
+  const h=setup();
   const doc=h.doc,target=h.target,button=h.button;
   h.controller.dispose();
   let focused=0;button.focus=()=>{focused++;};
-  const controller=createChartFullscreen(target,()=>{}, {document:doc,window:{requestAnimationFrame:cb=>frames.push(cb),scrollTo:()=>{}}});
+  const controller=createChartFullscreen(target,()=>{}, {document:doc,window:{scrollTo:()=>{}},deferRestore:true});
   await controller.enter();await controller.exit();
-  assert.equal(focused,0);assert.equal(frames.length,1);
-  frames.shift()();assert.equal(focused,1);
+  assert.equal(focused,0);
+  controller.restoreFocus();assert.equal(focused,1);
+  controller.restoreFocus();assert.equal(focused,1);
   await controller.enter();await controller.exit();await controller.enter();
-  frames.shift()();assert.equal(focused,1);
-  controller.dispose();
+  controller.restoreFocus();assert.equal(focused,1);
+  await controller.exit();controller.dispose();controller.restoreFocus();assert.equal(focused,1);
 });
