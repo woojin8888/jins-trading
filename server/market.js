@@ -1,3 +1,4 @@
+import {koreanDailyFallback} from './korean-history.js';
 import {INTRADAY,parseIntraday} from './intraday-data.js';
 import {parseDailyHistory,needsLatestSession,mergeLatestSession,historyQuality} from './history-data.js';
 import {RANK_SORTS,scanRequest,scanRows,koreanStock} from './rankings.js';
@@ -45,6 +46,7 @@ async function history(symbol,range='2y',marketForSymbolCheck=null){
       return {symbol,assetType:assetKind(symbol),volumeUnit:volumeUnit(symbol),unit:knownAsset(symbol)?.unit||'',name:localizedName||data.meta.longName||data.meta.shortName||symbol,koreanName:localizedName,currency:data.meta.currency,bars:data.bars,asOf:data.bars.at(-1).time,quote:data.quote,timeZone:data.timeZone,quality:{...historyQuality(data),volumeUnavailable:!hasVolume(symbol)},fetchedAt:new Date().toISOString(),source:'Yahoo Finance · 제공처 세션 일봉 · 배당 보정 미적용'};
     }catch(error){lastError=error;}
   }
+  if(marketForSymbolCheck?.kind==='stock'&&/^\d{6}\.(KS|KQ)$/.test(symbol)){const fallback=await koreanDailyFallback(symbol,await nativeName);if(fallback)return fallback;}
   throw lastError;
 }
 async function intraday(symbol,interval,requestedMarket){
