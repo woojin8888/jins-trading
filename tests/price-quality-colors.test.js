@@ -48,6 +48,14 @@ test('volume colors follow candle direction even when volume change points the o
   const bars=[{time:'2026-11-16',open:100,close:110,volume:100},{time:'2026-11-17',open:110,close:100,volume:150},{time:'2026-11-18',open:100,close:110,volume:80}];const points=volumePoints(bars);
   assert.equal(points[0].color,CHART_COLORS.up);assert.equal(points[1].color,CHART_COLORS.down);assert.equal(points[2].color,CHART_COLORS.up);assert.equal(points[1].value,150);assert.equal(CHART_COLORS.up,'#e5484d');assert.equal(CHART_COLORS.down,'#2878eb');
 });
+test('a still-empty latest-day response retries the other Yahoo host before returning older candles',async t=>{
+  const original=global.fetch,calls=[];t.after(()=>{global.fetch=original;});
+  global.fetch=async input=>{const url=new URL(input);calls.push(url);return Response.json({chart:{result:[url.searchParams.get('range')==='1d'&&url.hostname.startsWith('query2.')?raw({latest:true}):raw()]}});};
+  const response=await routeMarket(new URL('https://test/api/market?symbol=NVDA&range=10y')),data=await response.json();
+  assert.equal(data.bars.at(-1).time,'2026-11-17');assert.equal(data.quality.missingLatestSession,false);
+  assert.deepEqual(data.quality.missingDailyDates,[]);assert.equal(calls.length,3);
+  assert.equal(calls[2].hostname,'query2.finance.yahoo.com');
+});
 test('doji and real zero volume keep candle colors, missing volume stays absent, and volume-change calculations remain separate',()=>{
   assert.equal(volumeColor({open:100,close:100}),CHART_COLORS.up);assert.equal(volumeColor({open:-20,close:-10}),CHART_COLORS.up);assert.equal(volumeColor({open:10,close:0}),CHART_COLORS.down);assert.equal(volumeColor({open:null,close:10}),CHART_COLORS.neutral);
   const values=volumePoints([{time:'a',open:10,close:11,volume:0},{time:'b',open:11,close:10,volume:null},{time:'c',open:10,close:9,volume:150}]);assert.equal(values.length,2);assert.equal(values[0].value,0);assert.equal(values[0].color,CHART_COLORS.up);assert.equal(values[1].color,CHART_COLORS.down);assert.equal(volumeDirection(150,100),'up');assert.equal(volumeDirection(80,100),'down');

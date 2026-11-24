@@ -62,7 +62,7 @@ export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone
     const doubleClick=event=>{const id=nearestAverage(state,event.point);if(id)callbacks.current.onEditStudies?.(id);};
     chart.subscribeDblClick(doubleClick);chart.subscribeCrosshairMove(crosshair);chart.timeScale().subscribeVisibleLogicalRangeChange(update);
     const observer=new ResizeObserver(update);observer.observe(container);container.addEventListener('pointerup',update);container.addEventListener('pointermove',dragged);container.addEventListener('wheel',update,{passive:true});
-    const readyApi={reset:()=>chart.timeScale().fitContent(),screenshot:()=>{
+    const readyApi={reset:()=>chart.timeScale().fitContent(),latest:()=>chart.timeScale().scrollToRealTime(),screenshot:()=>{
       const canvas=chart.takeScreenshot(),ctx=canvas.getContext('2d'),ratio=canvas.width/container.clientWidth;ctx.save();ctx.scale(ratio,ratio);ctx.beginPath();ctx.rect(0,0,container.clientWidth-state.axisWidth,chart.panes()[0].getHeight());ctx.clip();
       for(const b of state.profile){ctx.fillStyle=b.poc?profileOptions.current.pocColor:profileOptions.current.color;ctx.globalAlpha=b.poc ? .5 : b.inValueArea ? .3 : .13;ctx.fillRect(container.clientWidth-state.axisWidth-b.width,b.y1,b.width,Math.max(1,b.y2-b.y1-1));}ctx.globalAlpha=1;paintLearning(ctx,state.learningRendered||[],chart.timeScale().width(),chart.panes()[0].getHeight());for(const row of state.renderedDrawings||[])paintDrawing(ctx,row,chart.timeScale().width());ctx.restore();
       if(callbacks.current.replay){ctx.save();ctx.font='14px sans-serif';ctx.fillStyle='#555';ctx.fillText('과거 봉 리플레이 · '+callbacks.current.symbol,12,canvas.height-12);ctx.restore();}const a=document.createElement('a');a.download=callbacks.current.replay?'jins-trading-replay.png':'jins-trading-chart.png';a.href=canvas.toDataURL('image/png');a.click();
@@ -78,6 +78,7 @@ export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone
     const paneHeights=new Map(state.groups.filter(group=>group.pane>0).map(group=>[group.id,group.members[0].api.getPane().getHeight()]));
     for(const series of state.series)chart.removeSeries(series);state.series=[];state.groups=[];state.data=data;state.candleMap=new Map(data.map(bar=>[bar.time,bar]));
     candles.applyOptions({priceFormat:{type:'price',precision:pricePrecision??(data.at(-1).close<10?3:2),minMove:10**-(pricePrecision??(data.at(-1).close<10?3:2))}});candles.setData(data);
+    host.current.dataset.lastBar=String(data.at(-1).time);host.current.dataset.symbol=symbol;
     let nextPane=1;
     function add(spec,pane,bounds){
       const options={color:spec.color,lineWidth:spec.width||1,lineStyle:spec.lineStyle==='dotted'?LineStyle.Dotted:LineStyle.Solid,priceLineVisible:spec.priceLine===true,lastValueVisible:pane>0,title:'',crosshairMarkerVisible:true};
@@ -105,8 +106,10 @@ export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone
       for(const value of calculation.bands)members[0].api.createPriceLine({price:value,color:'#b2bdcf',lineWidth:1,lineStyle:2,axisLabelVisible:false});
       state.groups.push({id:study.id,label:studyLabel(study),pane,color:study.color,members});
     }
-    let panelHeight=0;for(const group of state.groups.filter(group=>group.pane>0)){const height=paneHeights.get(group.id)||120;chart.panes()[group.pane].setHeight(height);panelHeight+=height;}
-    chart.panes()[0].setHeight(Math.max(160,host.current.clientHeight-panelHeight-28));
+    // Set all pane weights together. Repeated setHeight calls redistribute
+    // earlier panes and progressively squash volume/RS on study add/remove.
+    let panelHeight=0;for(const group of state.groups.filter(group=>group.pane>0)){const height=paneHeights.get(group.id)||120;chart.panes()[group.pane].setStretchFactor(height);panelHeight+=height;}
+    chart.panes()[0].setStretchFactor(Math.max(160,host.current.clientHeight-panelHeight-28));
     if(preserve)chart.timeScale().setVisibleLogicalRange(preserve);
     else if(data.length===1)chart.timeScale().setVisibleLogicalRange({from:-1,to:5});
     else if(range==='ALL')chart.timeScale().fitContent();

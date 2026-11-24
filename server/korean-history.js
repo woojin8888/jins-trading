@@ -1,7 +1,7 @@
 const marketDate=seconds=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(seconds*1000));
 export function parseKoreanHistory(xml,code,now=Date.now()){
- if(!/^\d{6}$/.test(code)||typeof xml!=='string')return [];
- const chart=/<chartdata\b[^>]*\bsymbol\s*=\s*["'](\d{6})["'][^>]*>([\s\S]*?)<\/chartdata>/i.exec(xml);
+ if(!/^(?:\d{6}|KOSPI|KOSDAQ)$/.test(code)||typeof xml!=='string')return [];
+ const chart=/<chartdata\b[^>]*\bsymbol\s*=\s*["'](\d{6}|KOSPI|KOSDAQ)["'][^>]*>([\s\S]*?)<\/chartdata>/i.exec(xml);
  if(!chart||chart[1]!==code)return [];
  const today=marketDate(now/1000,'kr'),rows=new Map();
  for(const item of chart[2].matchAll(/<item\b[^>]*\bdata\s*=\s*["']([^"']+)["'][^>]*\/?\s*>/gi)){

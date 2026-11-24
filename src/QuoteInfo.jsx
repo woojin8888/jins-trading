@@ -10,16 +10,18 @@ export default function QuoteInfo({history,quoteHistory,dailyHistory,listQuote,s
   const intraday=!!quality.intraday,barLabel=intraday?timeframeLabel(history.interval)+'봉':'일봉';
   const comparison=quoteComparison(latest,listQuote),volume=volumeComparison(dailyHistory||history,listQuote);
   const coverageWarning=quality.missingSourceBars>0||quality.incompleteGroups>0||quality.providerSessionDiffers;
-  const warning=stale||coverageWarning||quality.missingLatestSession||quality.priceMismatch||quality.dataGap||freshness.invalidTime||freshness.providerDelayed||freshness.viewStale||['currency-mismatch','symbol-mismatch','different-price'].includes(comparison.status)||volume?.different;
+  const warning=stale||coverageWarning||quality.missingDailyDates?.length>0||quality.missingLatestSession||quality.priceMismatch||quality.dataGap||freshness.invalidTime||freshness.providerDelayed||freshness.viewStale||['currency-mismatch','symbol-mismatch','different-price'].includes(comparison.status)||volume?.different;
   const price=value=>formatPrice(value,latest.currency,quote?.precision??2);
   return <details className={`quote-provenance ${warning?'quote-warning':''}`}><summary>
-    <span>{freshness.viewStale?'화면 갱신 지연':freshness.providerDelayed?'25분 이상 지난 시세':coverageWarning?'정규장 자료 일부 미제공·세션 확인 필요':quality.dataGap?'차트 자료 지연':volume?.different?'거래량 출처 차이':warning?'시세 기준 확인 필요':'제공처 시세 기준'}</span>
+    <span>{quality.missingDailyDates?.length>0?'일봉 '+quality.missingDailyDates.length+'일 미제공':freshness.viewStale?'화면 갱신 지연':freshness.providerDelayed?'25분 이상 지난 시세':coverageWarning?'정규장 자료 일부 미제공·세션 확인 필요':quality.dataGap?'차트 자료 지연':volume?.different?'거래량 출처 차이':warning?'시세 기준 확인 필요':'제공처 시세 기준'}</span>
     <span>{listQuote?`목록 ${delayLabel(listQuote)}`:'지연 가능 · 실시간 보장 없음'}</span>
     <span>{comparison.status==='within-tick'?'가격 대조 · 1호가 내 일치':comparison.status==='within-precision'?'가격 대조 · 표시 정밀도 내 일치':comparison.status==='different-price'?'가격 대조 · 차이 있음':comparison.status==='same-provider'?'동일 공급처 · 독립 대조 아님':['different-time','different-session','different-session-type'].includes(comparison.status)?'시각·세션 달라 대조 보류':'외부 가격 대조 미확인'}</span>
     <span className="quote-summary-time">가격 기준 {formatQuoteTime(quote?.asOf)} · {elapsedLabel(freshness.ageSeconds)}</span>
     <span>{freshness.marketOpen===false?'거래시간 밖 · 마지막 시세':freshness.marketOpen===true?'제공처 거래시간 중':'거래시간 정보 미제공'}</span>
     <span>{autoRefresh?'1분 자동 갱신':'자동 갱신 꺼짐'}</span><span>상세 보기</span>
   </summary><div className="quote-provenance-body">
+    {quality.missingDailyDates?.length>0&&<p role="status">제공처가 날짜는 반환했지만 유효한 OHLC를 제공하지 않은 일봉: {quality.missingDailyDates.join(', ')}. 지표도 실제 받은 봉만 사용하므로 누락이 없는 자료와 계산값이 다를 수 있습니다.</p>}
+    {quality.repairedDailyDates?.length>0&&<p>일봉 보완: {quality.repairedDailyDates.join(', ')} · {quality.dailyRepairSource}. 종목·포인트 단위와 이전 두 거래일의 OHLC를 대조한 뒤 빈 날짜만 보완했습니다. 상단 최신 가격과 가격 기준 시각은 기존 제공처 기준입니다.</p>}
     {stale&&<p role="status">새로고침에 실패해 마지막으로 받은 자료를 표시하고 있습니다.</p>}
     {freshness.invalidTime&&<p role="status">가격 기준 시각이 없거나 유효하지 않아 최신 여부를 확인할 수 없습니다.</p>}
     {freshness.viewStale&&<p role="status">화면을 조회한 지 2분이 넘었습니다. 새로고침하거나 자동 갱신을 켜 주세요.</p>}

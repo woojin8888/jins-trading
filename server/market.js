@@ -1,4 +1,5 @@
 import {koreanDailyFallback} from './korean-history.js';
+import {repairKoreanIndexHistory} from './korean-index-repair.js';
 import {INTRADAY,parseIntraday} from './intraday-data.js';
 import {parseDailyHistory,needsLatestSession,mergeLatestSession,historyQuality} from './history-data.js';
 import {RANK_SORTS,scanRequest,scanRows,koreanStock} from './rankings.js';
@@ -36,14 +37,18 @@ async function history(symbol,range='2y',marketForSymbolCheck=null){
       // Yahoo's long daily range can omit the latest day's OHLC while its quote
       // metadata is already current. Fetch actual daily OHLC; never invent a bar.
       if(range!=='1d'&&needsLatestSession(data)){
-        try{
-          const latest=await fetch(`https://${host}/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1d&events=history&includePrePost=false`,{headers:HEADERS,signal:AbortSignal.timeout(6000),cache:'no-store'});
-          if(latest.ok){const latestBody=await latest.json();data=mergeLatestSession(data,parseDailyHistory(latestBody?.chart?.result?.[0],symbol));}
-        }catch{/* Preserve verified older history and surface the missing session. */}
+        for(const recentHost of [host,...['query1.finance.yahoo.com','query2.finance.yahoo.com'].filter(value=>value!==host)]){
+          try{
+            const latest=await fetch(`https://${recentHost}/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1d&events=history&includePrePost=false`,{headers:HEADERS,signal:AbortSignal.timeout(6000),cache:'no-store'});
+            if(latest.ok){const latestBody=await latest.json();data=mergeLatestSession(data,parseDailyHistory(latestBody?.chart?.result?.[0],symbol));}
+          }catch{/* Preserve verified older history and surface the missing session. */}
+          if(!needsLatestSession(data))break;
+        }
       }
       if(!data.bars.length)throw Error('유효한 일봉이 없습니다.');
+      data=await repairKoreanIndexHistory(data,symbol);
       const localizedName=await nativeName;
-      return {symbol,assetType:assetKind(symbol),volumeUnit:volumeUnit(symbol),unit:knownAsset(symbol)?.unit||'',name:localizedName||data.meta.longName||data.meta.shortName||symbol,koreanName:localizedName,currency:data.meta.currency,bars:data.bars,asOf:data.bars.at(-1).time,quote:data.quote,timeZone:data.timeZone,quality:{...historyQuality(data),volumeUnavailable:!hasVolume(symbol)},fetchedAt:new Date().toISOString(),source:'Yahoo Finance · 제공처 세션 일봉 · 배당 보정 미적용'};
+      return {symbol,assetType:assetKind(symbol),volumeUnit:volumeUnit(symbol),unit:knownAsset(symbol)?.unit||'',name:localizedName||data.meta.longName||data.meta.shortName||symbol,koreanName:localizedName,currency:data.meta.currency,bars:data.bars,asOf:data.bars.at(-1).time,quote:data.quote,timeZone:data.timeZone,quality:{...historyQuality(data),volumeUnavailable:!hasVolume(symbol)},fetchedAt:new Date().toISOString(),source:'Yahoo Finance · 제공처 세션 일봉 · 배당 보정 미적용'+(data.dailyRepairSource?' · 누락 일봉 보완: '+data.dailyRepairSource:'')};
     }catch(error){lastError=error;}
   }
   if(marketForSymbolCheck?.kind==='stock'&&/^\d{6}\.(KS|KQ)$/.test(symbol)){const fallback=await koreanDailyFallback(symbol,await nativeName);if(fallback)return fallback;}
