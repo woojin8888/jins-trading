@@ -14,7 +14,13 @@ export function createChartFullscreen(target,onChange,{document:doc=globalThis.d
     if(!saved)return;const previous=saved;saved=null;
     doc.body.style.overflow=previous.bodyOverflow;doc.documentElement.style.overflow=previous.rootOverflow;
     for(const [element,inert] of previous.inert)element.inert=inert;
-    if(restoreFocus){if(previous.focus?.isConnected!==false)previous.focus?.focus?.({preventScroll:true});win?.scrollTo?.(previous.x,previous.y);}
+    if(restoreFocus){
+      // React must first clear pending/disabled on the entry button. Focusing
+      // during fullscreenchange otherwise silently fails in real browsers.
+      const restore=()=>{if(disposed||state.active)return;if(previous.focus?.isConnected!==false)previous.focus?.focus?.({preventScroll:true});win?.scrollTo?.(previous.x,previous.y);};
+      if(win?.requestAnimationFrame)win.requestAnimationFrame(restore);
+      else {if(previous.focus?.isConnected!==false)previous.focus?.focus?.({preventScroll:true});win?.scrollTo?.(previous.x,previous.y);}
+    }
   }
   function reset(restoreFocus=true){unlockPage(restoreFocus);emit({active:false,mode:'none',pending:false});}
   function exitNative(){const exit=doc.exitFullscreen||doc.webkitExitFullscreen;try{return exit?Promise.resolve(exit.call(doc)):Promise.resolve();}catch(error){return Promise.reject(error);}}

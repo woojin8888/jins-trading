@@ -51,3 +51,18 @@ test('WebKit-prefixed fullscreen events and methods use the same cleanup and ret
   const h=setup({native:false});h.doc.webkitFullscreenEnabled=true;h.target.webkitRequestFullscreen=()=>{h.doc.webkitFullscreenElement=h.target;h.doc.dispatchEvent(new Event('webkitfullscreenchange'));};delete h.doc.exitFullscreen;h.doc.webkitExitFullscreen=()=>{h.doc.webkitFullscreenElement=null;h.doc.dispatchEvent(new Event('webkitfullscreenchange'));};
   await h.controller.enter();assert.equal(h.controller.getState().mode,'native');await h.controller.exit();assert.equal(h.controller.getState().active,false);assert.equal(h.doc.body.style.overflow,'auto');h.controller.dispose();
 });
+
+test('focus restoration waits for the closing button state to settle and ignores a new fullscreen entry',async()=>{
+  const h=setup(),frames=[];
+  // The production window schedules after React clears pending/disabled.
+  const doc=h.doc,target=h.target,button=h.button;
+  h.controller.dispose();
+  let focused=0;button.focus=()=>{focused++;};
+  const controller=createChartFullscreen(target,()=>{}, {document:doc,window:{requestAnimationFrame:cb=>frames.push(cb),scrollTo:()=>{}}});
+  await controller.enter();await controller.exit();
+  assert.equal(focused,0);assert.equal(frames.length,1);
+  frames.shift()();assert.equal(focused,1);
+  await controller.enter();await controller.exit();await controller.enter();
+  frames.shift()();assert.equal(focused,1);
+  controller.dispose();
+});
