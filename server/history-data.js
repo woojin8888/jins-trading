@@ -52,7 +52,7 @@ export function historyQuality(data,now=Date.now()){
   const confirmationPending=!!(currentBar&&!marketOpen&&now>=regular.end*1000&&Date.parse(quote.asOf)<regular.end*1000&&sessionDate(now/1000,data.timeZone)===latest.time);
   const sessionOpen=currentBar&&(marketOpen===true||confirmationPending);
   const dates=new Set(data.bars.map(bar=>bar.time)),missingDailyDates=(data.invalidBarDates||[]).filter(date=>!dates.has(date));
-  return {latestBarDate:latest?.time||null,expectedSessionDate:quote.sessionDate,missingLatestSession,priceMismatch,sessionOpen,marketOpen,confirmationPending,invalidBarCount:data.invalidBarCount,missingDailyDates,repairedDailyDates:data.repairedDailyDates||[],dailyRepairSource:data.dailyRepairSource||null,latestSessionPatched:!!data.latestSessionPatched,regularSessionOnly:true};
+  return {latestBarDate:latest?.time||null,expectedSessionDate:quote.sessionDate,missingLatestSession,priceMismatch,sessionOpen,marketOpen,confirmationPending,invalidBarCount:data.invalidBarCount,missingDailyDates,repairedDailyDates:data.repairedDailyDates||[],dailyRepairSource:data.dailyRepairSource||null,dailyRepairs:data.dailyRepairs||[],latestSessionPatched:!!data.latestSessionPatched,regularSessionOnly:true};
 }
 export function intradayQuality(info,bars,now=Date.now()){
   const last=bars.at(-1),date=last?sessionDate(last.time,info.timeZone):null,quote=info.quote;

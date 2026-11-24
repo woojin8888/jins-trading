@@ -1,5 +1,6 @@
 import {koreanDailyFallback} from './korean-history.js';
 import {repairKoreanIndexHistory} from './korean-index-repair.js';
+import {repairKoreanStockHistory} from './korean-stock-repair.js';
 import {searchAllInstruments} from './unified-search.js';
 import {INTRADAY,parseIntraday} from './intraday-data.js';
 import {parseDailyHistory,needsLatestSession,mergeLatestSession,historyQuality} from './history-data.js';
@@ -48,6 +49,7 @@ async function history(symbol,range='2y',marketForSymbolCheck=null){
       }
       if(!data.bars.length)throw Error('유효한 일봉이 없습니다.');
       data=await repairKoreanIndexHistory(data,symbol);
+      data=await repairKoreanStockHistory(data,symbol);
       const localizedName=await nativeName;
       return {symbol,assetType:assetKind(symbol),volumeUnit:volumeUnit(symbol),unit:knownAsset(symbol)?.unit||'',name:localizedName||data.meta.longName||data.meta.shortName||symbol,koreanName:localizedName,currency:data.meta.currency,bars:data.bars,asOf:data.bars.at(-1).time,quote:data.quote,timeZone:data.timeZone,quality:{...historyQuality(data),volumeUnavailable:!hasVolume(symbol)},fetchedAt:new Date().toISOString(),source:'Yahoo Finance · 제공처 세션 일봉 · 배당 보정 미적용'+(data.dailyRepairSource?' · 누락 일봉 보완: '+data.dailyRepairSource:'')};
     }catch(error){lastError=error;}

@@ -21,7 +21,8 @@ export default function QuoteInfo({history,quoteHistory,dailyHistory,listQuote,s
     <span>{autoRefresh?'1분 자동 갱신':'자동 갱신 꺼짐'}</span><span>상세 보기</span>
   </summary><div className="quote-provenance-body">
     {quality.missingDailyDates?.length>0&&<p role="status">제공처가 날짜는 반환했지만 유효한 OHLC를 제공하지 않은 일봉: {quality.missingDailyDates.join(', ')}. 지표도 실제 받은 봉만 사용하므로 누락이 없는 자료와 계산값이 다를 수 있습니다.</p>}
-    {quality.repairedDailyDates?.length>0&&<p>일봉 보완: {quality.repairedDailyDates.join(', ')} · {quality.dailyRepairSource}. 종목·포인트 단위와 이전 두 거래일의 OHLC를 대조한 뒤 빈 날짜만 보완했습니다. 상단 최신 가격과 가격 기준 시각은 기존 제공처 기준입니다.</p>}
+    {quality.repairedDailyDates?.length>0&&<p>일봉 보완: {quality.repairedDailyDates.join(', ')} · {quality.dailyRepairSource}. 종목과 주변 두 거래일의 가격 단위를 대조한 뒤 빈 날짜만 보완했습니다. 상단 최신 가격과 가격 기준 시각은 기존 제공처 기준입니다.</p>}
+    {quality.dailyRepairs?.map(repair=><p key={repair.date}>{repair.date}: {repair.source} · {repair.verifiedWith}. 거래량 {repair.sourceVolume.toLocaleString('ko-KR')}주{repair.volumeDifferent?` · 비교 출처와 거래량 차이${Number.isFinite(repair.volumeDifferencePercent)?' '+repair.volumeDifferencePercent.toFixed(2)+'%':''} (출처별 집계 차이 가능)`:''}. 해당 봉의 OHLC와 거래량은 같은 출처의 원본을 사용합니다.</p>)}
     {stale&&<p role="status">새로고침에 실패해 마지막으로 받은 자료를 표시하고 있습니다.</p>}
     {freshness.invalidTime&&<p role="status">가격 기준 시각이 없거나 유효하지 않아 최신 여부를 확인할 수 없습니다.</p>}
     {freshness.viewStale&&<p role="status">화면을 조회한 지 2분이 넘었습니다. 새로고침하거나 자동 갱신을 켜 주세요.</p>}
@@ -48,8 +49,8 @@ export default function QuoteInfo({history,quoteHistory,dailyHistory,listQuote,s
     {comparison.status==='symbol-mismatch'&&<p role="status">차트와 목록의 종목 코드가 달라 대조하지 않습니다.</p>}
     {comparison.status==='different-price'&&<p>가까운 기준 시각의 두 출처 가격 차이 {comparison.percent===null?'비교 기준가 0 · 비율 미산출':comparison.percent.toFixed(3)+'%'}. 거래소·반영 시각 차이도 확인해 주세요.</p>}
     {comparison.status==='currency-mismatch'&&<p role="status">차트와 목록의 통화가 달라 가격을 직접 비교할 수 없습니다.</p>}
-    {volume?.different&&<p role="status">거래량 출처 차이 {volume.percent===null?'목록 거래량 0 · 비율 미산출':volume.percent.toFixed(3)+'%'} · 차트 {volume.chartVolume.toLocaleString('ko-KR')}, 목록 {volume.listVolume.toLocaleString('ko-KR')}. 차트 지표는 Yahoo 봉 거래량을 사용합니다.</p>}
+    {volume?.different&&<p role="status">거래량 출처 차이 {volume.percent===null?'목록 거래량 0 · 비율 미산출':volume.percent.toFixed(3)+'%'} · 차트 {volume.chartVolume.toLocaleString('ko-KR')}, 목록 {volume.listVolume.toLocaleString('ko-KR')}. 차트 지표는 차트에 표시된 봉의 원본 거래량을 사용합니다.</p>}
     {listQuote&&!volume&&<p>거래량은 확정된 같은 거래일·종목·통화와 가까운 기준 시각이 확인된 경우에만 대조합니다. 현재는 대조 조건을 확인하지 못했거나 동일 공급처이므로 거래량 일치 여부를 판정하지 않습니다.</p>}
-    <p className="quote-data-note">자동 갱신은 제공처의 시세 지연을 없애지 않습니다. 조회 시각과 가격 기준 시각은 다릅니다. 가격·등락률은 최신 정규장 시세 기준이며 선택 봉의 OHLC·거래량과 구분합니다. 거래량 집계와 배당·분할 보정 기준이 다른 출처의 숫자를 섞어 지표를 보정하지 않습니다.</p>
+    <p className="quote-data-note">자동 갱신은 제공처의 시세 지연을 없애지 않습니다. 조회 시각과 가격 기준 시각은 다릅니다. 가격·등락률은 최신 정규장 시세 기준이며 선택 봉의 OHLC·거래량과 구분합니다. 한 봉의 OHLC와 거래량은 같은 출처의 원본을 사용하며, 보완한 과거 봉의 출처와 거래량 차이는 위에 표시합니다.</p>
   </div></details>;
 }
