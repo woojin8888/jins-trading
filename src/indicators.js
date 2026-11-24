@@ -23,7 +23,7 @@ export const INDICATORS=[
   {type:'cmf',name:'CMF · Chaikin 자금흐름',short:'CMF',placement:'panel',description:'고저 범위 안의 종가 위치와 거래량으로 자금 흐름을 계산합니다.',color:'#539980',fields:[period('period','기간',20)]},
   {type:'stochRsi',name:'Stochastic RSI',short:'Stoch RSI',placement:'panel',description:'RSI 범위 내 위치를 다시 계산해 %K·%D를 표시합니다.',color:'#6f83c9',fields:[period('rsiPeriod','RSI 기간',14),period('period','스토캐스틱 기간',14),period('smoothK','%K 평활',3,100),period('smoothD','%D 평활',3,100)]},
 ];
-export const BUILTIN_INDICATORS=[{type:'volume',name:'거래량 · Volume',short:'VOL',placement:'panel',builtin:'showVolume',description:'거래량의 정확한 주수, 우측 수치·수평선과 평균 거래량을 표시합니다.'},{type:'volumeProfile',name:'매물대 · Volume Profile (추정)',short:'VP',placement:'overlay',builtin:'showProfile',description:'보이는 구간 또는 최근 N개 봉의 가격대별 추정 거래량입니다. POC·VAH·VAL을 설정할 수 있습니다.'},{type:'relativeStrength',name:'상대강도 · 업로드 RS / 지수 대비',short:'RS',placement:'panel',builtin:'showRS',description:'업로드 코드의 13·26·39·52봉 가중 RS 또는 지수 대비 시작값 100 선을 선택합니다.'}];
+export const BUILTIN_INDICATORS=[{type:'volume',name:'거래량 · Volume',short:'VOL',placement:'overlay',builtin:'showVolume',description:'주가 차트 안쪽 하단에 거래량과 평균선을 표시합니다. 높이를 조절하거나 별도 패널로 바꿀 수 있습니다.'},{type:'volumeProfile',name:'매물대 · Volume Profile (추정)',short:'VP',placement:'overlay',builtin:'showProfile',description:'보이는 구간 또는 최근 N개 봉의 가격대별 추정 거래량입니다. POC·VAH·VAL을 설정할 수 있습니다.'},{type:'relativeStrength',name:'상대강도 · 업로드 RS / 지수 대비',short:'RS',placement:'panel',builtin:'showRS',description:'업로드 코드의 13·26·39·52봉 가중 RS 또는 지수 대비 시작값 100 선을 선택합니다.'}];
 export const MAX_STUDIES=12;
 const catalog=new Map(INDICATORS.map(item=>[item.type,item]));
 export const indicatorDefinition=type=>catalog.get(type);

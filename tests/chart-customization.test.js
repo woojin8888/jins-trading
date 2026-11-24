@@ -21,6 +21,17 @@ test('custom moving average type, source, period, width and color survive settin
   const bad=normalizePreferences({...prefs,movingAverages:[{...prefs.movingAverages[0],type:'script',source:'bad',period:-1,color:'url(bad)',width:99}]});
   assert.equal(bad.movingAverages[0].type,'sma');assert.equal(bad.movingAverages[0].period,20);assert.equal(bad.movingAverages[0].source,'close');assert.equal(bad.movingAverages[0].color,'#111111');
 });
+test('volume defaults to the price pane while existing styles and a chosen separate pane survive reload',()=>{
+  const previous=defaultChartPreferences();delete previous.volume.position;delete previous.volume.height;
+  previous.volume.averageColor='#123456';previous.movingAverages[0].width=4;
+  const migrated=normalizePreferences(previous);
+  assert.equal(migrated.volume.position,'overlay');assert.equal(migrated.volume.height,20);
+  assert.equal(migrated.volume.averageColor,'#123456');assert.equal(migrated.movingAverages[0].width,4);
+  const chosen={...migrated,volume:{...migrated.volume,position:'panel',height:30}};
+  assert.deepEqual(normalizePreferences(JSON.parse(JSON.stringify(chosen))),chosen);
+  const bad=normalizePreferences({...chosen,volume:{...chosen.volume,position:'unknown',height:99}});
+  assert.equal(bad.volume.position,'overlay');assert.equal(bad.volume.height,20);
+});
 test('SMA, EMA, WMA, RMA, VWMA and HMA match independently known simple sequences',()=>{
   const values=[1,2,3,4,5,6];near(movingAverageValues('sma',values,3)[3],3);near(movingAverageValues('ema',values,3)[3],3);near(movingAverageValues('wma',values,3)[3],20/6);near(movingAverageValues('rma',values,3)[3],8/3);near(movingAverageValues('vwma',[1,2,3,4],3,[1,1,1,10]).at(-1),45/12);near(movingAverageValues('hma',values,4)[4],5);
   assert.equal(movingAverageValues('vwma',[1,2,3],3,[1,null,1]).at(-1),null);
