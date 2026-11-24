@@ -12,3 +12,5 @@ export function linkedWorkspaceView(savedView,requestedMarket,requestedStock){
  const market=requestedMarket||savedView.market,linked=requestedStock?.market===market?requestedStock:null;
  return {...savedView,market,symbols:linked?{...savedView.symbols,[market]:linked}:savedView.symbols,interval:linked?'D':savedView.interval,benchmarkSymbol:market===savedView.market?savedView.benchmarkSymbol:benchmarkFor(market)};
 }
+
+export function fullscreenFromSearch(search=''){return new URLSearchParams(search).get('view')==='fullscreen'&&stockFromSearch(search)!==null;}

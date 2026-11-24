@@ -27,7 +27,7 @@ import Watchlists from './Watchlists.jsx';
 import {MovingAverageQuickEditor} from './ChartStyleEditors.jsx';
 import SymbolSearch from './SymbolSearch.jsx';
 import {marketFromSearch} from './market-selection.js';
-import {stockFromSearch,linkedWorkspaceView} from './stock-deep-link.js';
+import {stockFromSearch,linkedWorkspaceView,fullscreenFromSearch} from './stock-deep-link.js';
 import {MARKETS,ASSETS,defaultSymbols,marketLabel,benchmarkFor,knownAsset,formatPrice,currencyLabel,expectedCurrencies,assetKind,volumeUnit,hasVolume,quoteUnit} from './instruments.js';
 import MarketSelect from './MarketSelect.jsx';
 import AssetBrowser from './AssetBrowser.jsx';
@@ -66,6 +66,7 @@ function Note({market,symbol,account}){
 export function App(){
   const [requestedMarket,setRequestedMarket]=useState(()=>marketFromSearch(globalThis.location?.search||''));
   const [requestedStock,setRequestedStock]=useState(()=>stockFromSearch(globalThis.location?.search||''));
+  const [requestedFullscreen]=useState(()=>fullscreenFromSearch(globalThis.location?.search||''));
   const account=useAccount(),now=useMarketClock();
   const {preferences,setField,storageError,ready:preferencesReady,sync:preferencesSync,retry:retryPreferences}=useChartPreferences(account);
   const workspaceCloud=useCloudDocument({userId:account.session?.user.id,authReady:account.authReady,documentKey:'workspace',initial:defaultWorkspace,normalize:normalizeWorkspace});
@@ -78,7 +79,7 @@ export function App(){
   const [market,setMarket]=useState(requestedMarket||'us'),[symbols,setSymbols]=useState(()=>requestedStock?{...DEFAULTS,[requestedStock.market]:requestedStock}:DEFAULTS),[page,setPage]=useState('chart'),[history,setHistory]=useState(null),[benchmark,setBenchmark]=useState(null),[benchmarkSymbol,setBenchmarkSymbol]=useState(benchmarkFor(requestedMarket||'us')),[benchError,setBenchError]=useState(''),[universeState,setUniverse]=useState(null),[listError,setListError]=useState(''),[busy,setBusy]=useState(true),[error,setError]=useState(''),[attempt,setAttempt]=useState(0),[hover,setHover]=useState(null),[interval,setInterval]=useState('D'),[range,setRange]=useState('180'),[auth,setAuth]=useState(false),[settings,setSettings]=useState(false),[settingsTab,setSettingsTab]=useState('averages'),[help,setHelp]=useState(false),[rightTab,setRightTab]=useState('market'),[group,setGroup]=useState('전체'),[refreshList,setRefreshList]=useState(0);
   const universe=universeState?.market===market&&universeState.board===(market==='kr'?workspace.board:'all')?universeState:null;
   const chartPanel=useRef(null),chartApi=useRef(null),historyTarget=useRef(''),benchmarkTarget=useRef(''),universeTarget=useRef(''),selected=symbols[market],symbol=selected.symbol;
-  const fullscreen=useChartFullscreen(chartPanel,page==='chart');
+  const fullscreen=useChartFullscreen(chartPanel,page==='chart',requestedFullscreen);
   const [fullscreenTools,setFullscreenTools]=useState(false);
   useEffect(()=>{if(!fullscreen.active)setFullscreenTools(false);},[fullscreen.active]);
   const dialogContainer=fullscreen.active?chartPanel.current:undefined;

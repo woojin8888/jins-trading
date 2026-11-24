@@ -66,3 +66,5 @@ test('deferred focus restoration follows the UI commit and ignores a new fullscr
   controller.restoreFocus();assert.equal(focused,1);
   await controller.exit();controller.dispose();controller.restoreFocus();assert.equal(focused,1);
 });
+
+test('automatic opening fills the viewport without requesting a browser permission or user gesture',async()=>{const h=setup();await h.controller.enter({native:false});assert.equal(h.requested(),0);assert.equal(h.controller.getState().mode,'viewport');assert.equal(h.doc.body.style.overflow,'hidden');await h.controller.toggle();assert.equal(h.controller.getState().active,false);assert.equal(h.sibling.inert,false);h.controller.dispose();});

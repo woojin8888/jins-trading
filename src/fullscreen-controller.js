@@ -29,9 +29,10 @@ export function createChartFullscreen(target,onChange,{document:doc=globalThis.d
       emit({active:true,mode:'native',pending:false});
     }else if(state.mode==='native'){wanted=false;operation++;reset();}
   }
-  function enter(){
+  function enter({native=true}={}){
     if(disposed||state.active||state.pending)return Promise.resolve();
     const current=++operation;wanted=true;pendingRestore=null;lockPage();emit({active:true,mode:'viewport',pending:false});
+    if(!native)return Promise.resolve();
     const request=target.requestFullscreen||target.webkitRequestFullscreen,enabled=target.requestFullscreen?doc.fullscreenEnabled:doc.webkitFullscreenEnabled;
     if(!request||enabled===false||owner()&&owner()!==target)return Promise.resolve();
     emit({active:true,mode:'viewport',pending:true});
