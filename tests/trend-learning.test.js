@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {kernelTrend,confirmedPivotLows,trendLearning} from '../src/trend-learning.js';
+import {kernelTrend,confirmedPivotLows,dottedTrend,pivotLowStudy} from '../src/trend-learning.js';
 import {createStudy,normalizeStudy,calculateStudy} from '../src/indicators.js';
 import {normalizePreferences,defaultChartPreferences} from '../src/chart-preferences.js';
 import {createReplaySession,replaySnapshot} from '../src/bar-replay.js';
@@ -23,21 +23,31 @@ test('a bottom becomes knowable only after right-hand completed bars, with its c
 test('flat equal lows select the first eligible low instead of printing several apparent perfect bottoms',()=>{
   const bars=[5,4,2,2,2,4,5].map((low,i)=>({time:i,low}));assert.equal(confirmedPivotLows(bars,2,2).length,1);assert.equal(confirmedPivotLows(bars,2,2)[0].pivotTime,2);
 });
-test('future path is explicitly a translated past waveform, capped by its source pattern, with no invented quote timestamps',()=>{
-  const bars=data(200),params={...createStudy('trendLearning').params,pattern:12,horizon:60},model=trendLearning(bars,params),pattern=model.curve.slice(-13);
-  assert.equal(model.projection.length,12);model.projection.forEach((p,i)=>{assert.equal(p.step,i+1);near(p.value,model.last.value+pattern[i+1].value-pattern[0].value);assert.equal(p.time,undefined);});
-  assert.equal(bars.length,200);assert.equal(model.curve.at(-1).time,bars.at(-1).time);
+test('dotted trend and pivot lows are separate models with no invented future path',()=>{
+  const bars=data(200),line=createStudy('dottedTrend'),low=createStudy('pivotLows'),lineResult=calculateStudy(line,bars),lowResult=calculateStudy(low,bars);
+  assert.deepEqual(lineResult.learning.curve,kernelTrend(bars,8));assert.deepEqual(lineResult.learning.signals,[]);assert.equal(lineResult.learning.projection,undefined);
+  assert.equal(lineResult.series[0].lineStyle,'dotted');assert.equal(lineResult.series[0].data.at(-1).time,bars.at(-1).time);
+  assert.deepEqual(lowResult.learning.curve,[]);assert.deepEqual(lowResult.learning.signals,confirmedPivotLows(bars,3,3));assert.deepEqual(lowResult.series[0].data,[]);assert.equal(lowResult.learning.projection,undefined);
+  assert.deepEqual(Object.keys(line.params),['bandwidth']);assert.deepEqual(Object.keys(low.params),['left','right','showPivotOrigin']);
 });
-test('forming candles cannot influence the curve, hypothetical path or delayed-low signals',()=>{
-  const bars=data(200),params=createStudy('trendLearning').params,forming={...bars.at(-1),time:'2030-01-01',close:999999,low:1,complete:false};
-  assert.deepEqual(trendLearning([...bars,forming],params),trendLearning(bars,params));assert.equal(trendLearning(bars.slice(0,10),params).projection.length,0);
+test('forming candles cannot influence either independent indicator',()=>{
+  const bars=data(200),forming={...bars.at(-1),time:'2030-01-01',close:999999,low:1,complete:false};
+  for(const [type,calculate] of [['dottedTrend',dottedTrend],['pivotLows',pivotLowStudy]]){const params=createStudy(type).params;assert.deepEqual(calculate([...bars,forming],params),calculate(bars,params));}
+  assert.deepEqual(dottedTrend(bars.slice(0,10),createStudy('dottedTrend').params).curve,[]);
 });
-test('a replay projection only uses revealed history even when the future contains extreme values',()=>{
-  const bars=data(300),h={symbol:'NVDA',currency:'USD',timeZone:'America/New_York',bars,quality:{sessionOpen:false}},session=createReplaySession({chart:h,daily:h,interval:'D'}),snapshot=replaySnapshot(session,150),params=createStudy('trendLearning').params,expected=trendLearning(bars.slice(0,151),params);
-  bars[200].close=999999;assert.deepEqual(trendLearning(snapshot.chartBars,params),expected);assert.equal(expected.last.time,snapshot.chartBars.at(-1).time);
+test('both independent studies in replay only use revealed history',()=>{
+  const bars=data(300),h={symbol:'NVDA',currency:'USD',timeZone:'America/New_York',bars,quality:{sessionOpen:false}},session=createReplaySession({chart:h,daily:h,interval:'D'}),snapshot=replaySnapshot(session,150);
+  const expected=['dottedTrend','pivotLows'].map(type=>calculateStudy(createStudy(type),bars.slice(0,151)).learning);bars[200].close=999999;bars[200].low=-999999;
+  for(const [i,type] of ['dottedTrend','pivotLows'].entries())assert.deepEqual(calculateStudy(createStudy(type),snapshot.chartBars).learning,expected[i]);
 });
-test('study settings retain the opt-in flags, reject string booleans, and do not turn on a speculative overlay by default',()=>{
-  assert.equal(defaultChartPreferences().studies.length,0);const study=createStudy('trendLearning');assert.equal(study.color,'#111111');assert.equal(study.width,2);study.params.showProjection=false;study.params.showPivotOrigin=true;
-  const saved=normalizePreferences({...defaultChartPreferences(),studies:[study]});assert.deepEqual(saved.studies[0],study);assert.deepEqual(normalizeStudy({...study,params:{...study.params,showProjection:'false',right:999}}).params,{...study.params,showProjection:true,right:3});
-  const result=calculateStudy(study,data(100));assert.equal(result.series[0].lineStyle,'dotted');assert.equal(result.learning.projection.length,0);assert.ok(result.learning.signals.every(s=>s.confirmedIndex>s.pivotIndex));
+test('legacy combined studies keep their line identity and style, without automatically enabling low markers or future paths',()=>{
+  const legacy={id:'saved-combined',type:'trendLearning',visible:false,color:'#123456',width:3,params:{bandwidth:12,left:5,right:4,showLows:true,showProjection:true,pattern:30,horizon:20}};
+  const next=normalizeStudy(legacy);assert.deepEqual(next,{id:legacy.id,type:'dottedTrend',visible:false,color:legacy.color,width:3,params:{bandwidth:12}});
+  assert.equal(createStudy('trendLearning'),null);const others=Array.from({length:11},()=>createStudy('ema')),stored=normalizePreferences({...defaultChartPreferences(),studies:[legacy,...others]});
+  assert.equal(stored.studies.length,12);assert.deepEqual(stored.studies.slice(1),others);assert.equal(stored.studies[0].id,legacy.id);assert.ok(stored.studies.every(s=>s.type!=='pivotLows'));assert.deepEqual(normalizePreferences(stored),stored);
+});
+test('separate settings persist and invalid settings cannot enable extra overlays',()=>{
+  assert.equal(defaultChartPreferences().studies.length,0);const line=createStudy('dottedTrend'),low=createStudy('pivotLows');assert.equal(line.color,'#111111');assert.equal(line.width,2);low.params.showPivotOrigin=true;low.params.right=5;
+  const saved=normalizePreferences({...defaultChartPreferences(),studies:[line,low]});assert.deepEqual(saved.studies,[line,low]);assert.deepEqual(normalizeStudy({...line,params:{bandwidth:99,showProjection:true}}).params,{bandwidth:8});
+  assert.deepEqual(normalizeStudy({...low,params:{...low.params,showPivotOrigin:'true',right:999}}).params,{left:3,right:3,showPivotOrigin:false});
 });

@@ -35,7 +35,6 @@ export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone
     const candles=priceMode==='line'?chart.addSeries(LineSeries,{color:'#2463eb',lineWidth:2}):chart.addSeries(CandlestickSeries,{upColor:CHART_COLORS.up,downColor:CHART_COLORS.down,borderVisible:false,wickUpColor:CHART_COLORS.up,wickDownColor:CHART_COLORS.down});
     const watermark=attachChartWatermark(chart.panes()[0],{symbol:callbacks.current.symbol,showTicker:callbacks.current.showTickerWatermark});
     const state={instanceId:crypto.randomUUID(),chart,candles,watermark,series:[],groups:[],data:[],candleMap:new Map(),previous:null,profileLines:[],frame:0,profile:[],axisWidth:70,disposed:false,drawingListeners:new Set()};runtime.current=state;setDrawingApi(state);
-    candles.applyOptions({autoscaleInfoProvider:original=>{const info=original(),bounds=state.learningScaleBounds;return !info||!bounds?info:{...info,priceRange:{minValue:Math.min(info.priceRange.minValue,bounds[0]),maxValue:Math.max(info.priceRange.maxValue,bounds[1])}};}});
     function readValues(event){
       const lastTime=state.data.at(-1)?.time;
       setReadouts(state.groups.map(group=>({...group,values:group.members.map(member=>{const last=member.data.at(-1),value=event?.time?event.seriesData.get(member.api)?.value:last&&(last.time===lastTime||member.confirmed)?last.value:null,point=member.pointColors?.get(event?.time?timeKey(event.time):lastTime);return {name:member.name,value:number(value,member.format,callbacks.current.volumeUnit,callbacks.current.pricePrecision??3),color:point||member.color};})})));
@@ -105,9 +104,9 @@ export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone
       if(volumeOverlay){chart.priceScale('volume-overlay',0).applyOptions({visible:false,autoScale:true,scaleMargins:{top:1-volumeHeight/100,bottom:0}});for(const member of [...members].reverse())member.api.setSeriesOrder(0);}
     }
     if(showRS&&(rsMode==='uploaded'||benchmark.length)){const pane=nextPane++,member=add({name:'RS',color:'#8765df',confirmed:rsMode==='uploaded',data:rsMode==='uploaded'?uploadedRS(data).filter(point=>rsAsOf!==undefined&&point.time<=rsAsOf):rsLine(data,aggregate(benchmark,interval))},pane);if(rsMode==='uploaded')member.api.createPriceLine({price:70,color:'#b3a6cd',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'70'});state.groups.push({id:'rs',label:rsMode==='uploaded'?'업로드 RS · 확정봉':'지수 대비 RS · 시작 100',pane,color:member.color,members:[member]});}
-    state.learningStudies=[];state.templateStudies=[];state.learningScaleBounds=null;
+    state.learningStudies=[];state.templateStudies=[];
     for(const study of studies){
-      if(!study.visible)continue;const definition=indicatorDefinition(study.type),input=study.type==='trendLearning'?data.filter(b=>rsAsOf!==undefined&&b.time<=rsAsOf):data,calculation=calculateStudy(study,input,{confirmedBars:data.filter(point=>rsAsOf!==undefined&&point.time<=rsAsOf),profileAllowed:hasVolume(symbol)&&!isIndexAggregateVolume(symbol)}),pane=definition.placement==='panel'?nextPane++:0;
+      if(!study.visible)continue;const definition=indicatorDefinition(study.type),input=['dottedTrend','pivotLows'].includes(study.type)?data.filter(b=>rsAsOf!==undefined&&b.time<=rsAsOf):data,calculation=calculateStudy(study,input,{confirmedBars:data.filter(point=>rsAsOf!==undefined&&point.time<=rsAsOf),profileAllowed:hasVolume(symbol)&&!isIndexAggregateVolume(symbol)}),pane=definition.placement==='panel'?nextPane++:0;
       if(calculation.learning)state.learningStudies.push({study,model:calculation.learning});
       if(calculation.template)state.templateStudies.push({study,model:calculation.template});
       const specs=calculation.series.length?calculation.series:[{name:definition.short,color:study.color,data:[]}],members=specs.map(spec=>add({...spec,width:study.width||1},pane,calculation.bounds));

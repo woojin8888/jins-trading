@@ -18,11 +18,11 @@ export function confirmedPivotLows(bars,left=3,right=3){
   }
   return signals;
 }
-export function trendLearning(bars,params){
-  const input=bars.filter(b=>b.complete!==false),curve=kernelTrend(input,params.bandwidth),last=curve.at(-1),pattern=curve.slice(-(params.pattern+1)),projection=[];
-  if(params.showProjection&&last&&pattern.length===params.pattern+1){
-    const base=pattern[0].value;
-    for(let h=1;h<=Math.min(params.horizon,params.pattern);h++)projection.push({step:h,value:last.value+pattern[h].value-base});
-  }
-  return {curve,projection,signals:params.showLows?confirmedPivotLows(input,params.left,params.right):[],last,requiredBars:Math.ceil(params.bandwidth*3)+params.pattern,availableBars:input.length,projectionLength:projection.length};
+export function dottedTrend(bars,params){
+  const input=bars.filter(b=>b.complete!==false),curve=kernelTrend(input,params.bandwidth);
+  return {kind:'dottedTrend',curve,signals:[],last:curve.at(-1),requiredBars:Math.ceil(params.bandwidth*3),availableBars:input.length};
+}
+export function pivotLowStudy(bars,params){
+  const input=bars.filter(b=>b.complete!==false);
+  return {kind:'pivotLows',curve:[],signals:confirmedPivotLows(input,params.left,params.right),requiredBars:params.left+params.right+1,availableBars:input.length};
 }
