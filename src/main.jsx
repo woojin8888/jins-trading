@@ -11,6 +11,7 @@ import {CHART_TIME_ZONE} from './chart-timezone.js';
 import {useMarketClock} from './useMarketClock.js';
 import {startQuoteRefresh} from './quote-refresh.js';
 const Chart=lazy(()=>import('./Chart.jsx'));
+const TreasuryRatesPage=lazy(()=>import('./TreasuryRatesPage.jsx'));
 import {aggregate,atr,mean,vcp} from './analysis.js';
 import {marketData,supabase,useAccount} from './backend.js';
 import './styles.css';
@@ -193,4 +194,4 @@ export function App(){
   </div>;
 }
 function Metric({label,value,detail,icon,color}){return <section className={`metric-card ${color}`}><div>{label}<span>{icon}</span></div><strong>{value}</strong><small>{detail}</small></section>;}
-if(typeof document!=='undefined'&&document.getElementById('root'))createRoot(document.getElementById('root')).render(<StrictMode><App/></StrictMode>);
+if(typeof document!=='undefined'&&document.getElementById('root'))createRoot(document.getElementById('root')).render(<StrictMode>{new URLSearchParams(window.location.search).get('market')==='treasuries'?<Suspense fallback={<p>재무부 일별 금리 준비 중…</p>}><TreasuryRatesPage/></Suspense>:<App/>}</StrictMode>);

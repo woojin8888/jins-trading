@@ -1,3 +1,4 @@
+import {treasuryHistory} from './treasury-rates.js';
 import {koreanDailyFallback} from './korean-history.js';
 import {repairKoreanIndexHistory} from './korean-index-repair.js';
 import {repairKoreanStockHistory} from './korean-stock-repair.js';
@@ -83,6 +84,7 @@ export async function routeMarket(url){
   try{
     if(!isMarket(market))return reply({error:'지원하지 않는 시장입니다.'},400);
     const action=url.searchParams.get('action')||'history';
+    if(action==='treasury'){try{return reply(await treasuryHistory(url.searchParams.get('symbol'),url.searchParams.get('range')||'2y',{fresh:url.searchParams.has('fresh')}));}catch(error){return reply({error:error.message},error.status===400?400:502);}}
     const board=url.searchParams.get('board')||'all';
     try{validateBoard(market,board);}catch(error){return reply({error:error.message},400);}
     if(action==='assets')return reply(await globalAssetRows(market,Number(url.searchParams.get('offset')||0),{fresh:url.searchParams.has('fresh')}));

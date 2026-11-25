@@ -60,7 +60,7 @@ test('timestamp crosshair lookups never collapse intraday candles to the same da
 });
 test('all existing study calculations accept real numeric intraday timestamps',()=>{
   const bars=daily(400).map((bar,i)=>({...bar,time:sec('2026-11-17T14:30:00Z')+i*900,close:100+i*.1+Math.sin(i*.2)*3,high:105+i*.1,low:95+i*.1}));
-  assert.equal(aggregate(bars,'15m'),bars);for(const definition of INDICATORS){const result=calculateStudy(createStudy(definition.type),bars);for(const series of result.series){assert.ok(series.data.length>0,definition.type);assert.ok(series.data.every(point=>typeof point.time==='number'&&Number.isFinite(point.value)),definition.type);}}
+  assert.equal(aggregate(bars,'15m'),bars);for(const definition of INDICATORS){const result=calculateStudy(createStudy(definition.type),bars);if(result.template){assert.equal(typeof result.template.table.asOf,'number');assert.equal(result.template.table.asOf,bars.at(-1).time);assert.ok(Number.isFinite(result.template.table.rs));continue;}for(const series of result.series){assert.ok(series.data.length>0,definition.type);assert.ok(series.data.every(point=>typeof point.time==='number'&&Number.isFinite(point.value)),definition.type);}}
 });
 test('Korean short volume labels stay readable while exact share counts remain available',()=>{
   assert.equal(formatVolume(12345678,'korean'),'1,234.6만주');assert.equal(formatVolume(123456789,'korean'),'1.23억주');assert.equal(formatVolume(1200,'korean'),'1.2천주');assert.equal(formatVolume(12345678,'shares'),'12,345,678주');assert.equal(formatVolume(null,'korean'),'—');

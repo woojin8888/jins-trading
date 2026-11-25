@@ -1,0 +1,237 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// Combined indicator: Minervini Trend Template (© yogy.frestarahmawan) + Volume Profile / Fixed Range (© LonesomeTheBlue)
+// Merged for personal use — free plan indicator-slot workaround
+
+//@version=5
+indicator("Minervini Trend Template + Volume Profile", overlay=true, max_boxes_count=200, max_bars_back=501)
+
+// ============================================================
+// ============  SECTION 1: MINERVINI TREND TEMPLATE  =========
+// ============================================================
+
+sma50 = ta.sma(close, 50)
+sma150 = ta.sma(close, 150)
+sma200 = ta.sma(close, 200)
+sma200_22 = sma200[22]
+
+// 1. stock price is above ma 150 and 200
+is_price_above_sma_150_and_200 = if (close > sma150) and (close > sma200)
+    true
+else
+    false
+
+c_1 = is_price_above_sma_150_and_200 ? 1 : 0
+
+// 2. sma 150 is above sma 200
+is_sma_150_above_sma_200 = if sma150 > sma200
+    true
+else
+    false
+
+c_2 = is_sma_150_above_sma_200 ? 1 : 0
+
+// 3. sma 200 is trending at least 1 month(22 days)
+is_trending_at_least_1_month = if sma200 > sma200_22
+    true
+else
+    false
+
+c_3 = is_trending_at_least_1_month ? 1 : 0
+
+// 4. sma 50 is above both sma 150 and 200
+is_sma_50_above_sma_150_and_200 = if (sma50 > sma150) and (sma50 > sma200)
+    true
+else
+    false
+
+c_4 = is_sma_50_above_sma_150_and_200 ? 1 : 0
+
+// 5. current stock price is above sma 50
+is_current_price_above_ma_50 = if (close > sma50)
+    true
+else
+    false
+
+c_5 = is_current_price_above_ma_50 ? 1 : 0
+
+// 6. current stock price is 25% above 52 weeks low
+minervini_high_loopback = input(260, "High Lookback Length", group="Minervini Trend Template")
+minervini_low_loopback = input(260, "Low Lookback Length", group="Minervini Trend Template")
+
+highest_price = ta.highest(high, minervini_high_loopback)
+lowest_price = ta.lowest(low, minervini_low_loopback)
+
+is_price_25_percent_above_52_weeks_low = if ((close / lowest_price) - 1) * 100 >= 25
+    true
+else
+    false
+
+c_6 = is_price_25_percent_above_52_weeks_low ? 1 : 0
+
+// Show 52 High / Low Line
+show_52_week_high_low = input.bool(defval=true, title="Show 52 week highest/lowest", group="Minervini Trend Template")
+plot(show_52_week_high_low ? highest_price : na, title='52 Week High', trackprice=true, color=color.orange, offset=-9999)
+plot(show_52_week_high_low ? lowest_price : na, title='52 Week Low', trackprice=true, color=color.orange, offset=-9999)
+
+// 7. Current Price is within 25% of 52 week high
+is_price_within_52_high = if (1 - (close / highest_price)) * 100 <= 25
+    true
+else
+    false
+
+c_7 = is_price_within_52_high ? 1 : 0
+
+// 8. RS rating > 70
+three_month_rs = 0.4 * (close / close[13])
+six_month_rs = 0.2 * (close / (close[26] * 2))
+nine_month_rs = 0.2 * (close / (close[39] * 3))
+twelve_month_rs = 0.2 * (close / (close[52] * 4))
+rs_rating = (three_month_rs + six_month_rs + nine_month_rs + twelve_month_rs) * 100
+rs_rating_str = str.tostring(rs_rating, "#.00")
+is_rs_rating_more_than_seventy = rs_rating > 70
+
+c_8 = is_rs_rating_more_than_seventy ? 1 : 0
+
+is_meet_all_criteria = is_price_above_sma_150_and_200 and is_sma_150_above_sma_200 and is_trending_at_least_1_month and is_sma_50_above_sma_150_and_200 and is_price_25_percent_above_52_weeks_low and is_price_within_52_high and is_rs_rating_more_than_seventy and is_current_price_above_ma_50
+minervini_count = c_1 + c_2 + c_3 + c_4 + c_5 + c_6 + c_7 + c_8
+
+// table section
+minervini_table_vertical_pos = input.string('bottom', 'Panel position', inline='11', options=['top', 'middle', 'bottom'], group='Minervini Trend Template')
+minervini_table_horizontal_pos = input.string('right', '', inline='11', options=['left', 'center', 'right'], group='Minervini Trend Template')
+
+minervini_text_color = color.black
+
+fn_fill_header(_id, _row) =>
+    table.cell(table_id=_id, column=0, row=_row, text='Criteria', width=0, height=0, text_color=minervini_text_color, text_size=size.small, bgcolor=color.aqua)
+    table.cell(table_id=_id, column=1, row=_row, text='', width=0, height=0, text_color=minervini_text_color, text_size=size.small, bgcolor=color.aqua)
+
+fn_fill_value(_id, _row, criteria, value, _color_value) =>
+    table.cell(table_id=_id, column=0, row=_row, text=criteria, width=0, height=0, text_color=minervini_text_color, text_size=size.small, bgcolor=color.white)
+    table.cell(table_id=_id, column=1, row=_row, text=value, width=0, height=0, text_color=minervini_text_color, text_size=size.small, bgcolor=_color_value)
+
+var minervini_T = table.new(
+     position=minervini_table_vertical_pos + "_" + minervini_table_horizontal_pos, columns=2, rows=10, bgcolor=color.white,
+     frame_color=color.gray, frame_width=2, border_color=color.gray, border_width=1)
+
+if barstate.islastconfirmedhistory
+    fn_fill_header(minervini_T, 0)
+    fn_fill_value(minervini_T, 1, 'Stock price is above MA 150 and 200', is_price_above_sma_150_and_200 ? 'yes' : 'no', is_price_above_sma_150_and_200 ? color.aqua : color.red)
+    fn_fill_value(minervini_T, 2, 'MA 150 is above MA 200', is_sma_150_above_sma_200 ? 'yes' : 'no', is_sma_150_above_sma_200 ? color.aqua : color.red)
+    fn_fill_value(minervini_T, 3, 'MA 200 is trending at least 1 month(22 days)', is_trending_at_least_1_month ? 'yes' : 'no', is_trending_at_least_1_month ? color.aqua : color.red)
+    fn_fill_value(minervini_T, 4, 'MA 50 is above both MA 150 and MA 200', is_sma_50_above_sma_150_and_200 ? 'yes' : 'no', is_sma_50_above_sma_150_and_200 ? color.aqua : color.red)
+    fn_fill_value(minervini_T, 5, 'The current stock price is trading above MA 50', is_current_price_above_ma_50 ? 'yes' : 'no', is_current_price_above_ma_50 ? color.aqua : color.red)
+    fn_fill_value(minervini_T, 6, 'Current stock price is 25% above 52 weeks low', is_price_25_percent_above_52_weeks_low ? 'yes' : 'no', is_price_25_percent_above_52_weeks_low ? color.aqua : color.red)
+    fn_fill_value(minervini_T, 7, 'Current Price is within 25% of 52 week high', is_price_within_52_high ? 'yes' : 'no', is_price_within_52_high ? color.aqua : color.red)
+    fn_fill_value(minervini_T, 8, 'RS rating more than 70', is_rs_rating_more_than_seventy ? "yes (" + rs_rating_str + ")" : "no (" + rs_rating_str + ")", is_rs_rating_more_than_seventy ? color.aqua : color.red)
+    fn_fill_value(minervini_T, 9, 'Meet minervini criteria', is_meet_all_criteria ? "yes (" + str.tostring(minervini_count) + "/8)" : "no (" + str.tostring(minervini_count) + "/8)", is_meet_all_criteria ? color.aqua : color.red)
+
+
+// ============================================================
+// ============  SECTION 2: VOLUME PROFILE / FIXED RANGE  =====
+// ============================================================
+
+bbars = input.int(title='Number of Bars', defval=150, minval=1, maxval=500, group="Volume Profile")
+cnum = input.int(title='Row Size', defval=24, minval=5, maxval=100, group="Volume Profile")
+percent = input.float(70., title='Value Area Volume %', minval=0, maxval=100, group="Volume Profile")
+poc_color = input.color(defval=#ff0000, title='POC Color', inline='poc', group="Volume Profile")
+poc_width = input.int(defval=2, title='Width', minval=1, maxval=5, inline='poc', group="Volume Profile")
+vup_color = input(defval=color.new(color.blue, 30), title='Value Area Up', group="Volume Profile")
+vdown_color = input(defval=color.new(color.orange, 30), title='Value Area Down', group="Volume Profile")
+up_color = input(defval=color.new(color.blue, 75), title='UP Volume', group="Volume Profile")
+down_color = input(defval=color.new(color.orange, 75), title='Down Volume', group="Volume Profile")
+show_poc = input.bool(defval=true, title="Show POC Label", group="Volume Profile")
+
+vp_top = ta.highest(bbars)
+vp_bot = ta.lowest(bbars)
+vp_dist = (vp_top - vp_bot) / 500
+vp_step = (vp_top - vp_bot) / cnum
+
+// calculate/keep channel levels
+levels = array.new_float(cnum + 1)
+for x = 0 to cnum by 1
+    array.set(levels, x, vp_bot + vp_step * x)
+
+// get the volume if there is intersection
+get_vol(y11, y12, y21, y22, height, vol) =>
+    nz(math.max(math.min(math.max(y11, y12), math.max(y21, y22)) - math.max(math.min(y11, y12), math.min(y21, y22)), 0) * vol / height)
+
+if barstate.islast
+    // calculate/get volume for each channel and candle
+    volumes = array.new_float(cnum * 2, 0.)
+    for bars = 0 to bbars - 1 by 1
+        body_top = math.max(close[bars], open[bars])
+        body_bot = math.min(close[bars], open[bars])
+        itsgreen = close[bars] >= open[bars]
+
+        topwick = high[bars] - body_top
+        bottomwick = body_bot - low[bars]
+        body = body_top - body_bot
+
+        bodyvol = body * volume[bars] / (2 * topwick + 2 * bottomwick + body)
+        topwickvol = 2 * topwick * volume[bars] / (2 * topwick + 2 * bottomwick + body)
+        bottomwickvol = 2 * bottomwick * volume[bars] / (2 * topwick + 2 * bottomwick + body)
+        for x = 0 to cnum - 1 by 1
+            array.set(volumes, x, array.get(volumes, x) + (itsgreen ? get_vol(array.get(levels, x), array.get(levels, x + 1), body_bot, body_top, body, bodyvol) : 0) + get_vol(array.get(levels, x), array.get(levels, x + 1), body_top, high[bars], topwick, topwickvol) / 2 + get_vol(array.get(levels, x), array.get(levels, x + 1), body_bot, low[bars], bottomwick, bottomwickvol) / 2)
+            array.set(volumes, x + cnum, array.get(volumes, x + cnum) + (itsgreen ? 0 : get_vol(array.get(levels, x), array.get(levels, x + 1), body_bot, body_top, body, bodyvol)) + get_vol(array.get(levels, x), array.get(levels, x + 1), body_top, high[bars], topwick, topwickvol) / 2 + get_vol(array.get(levels, x), array.get(levels, x + 1), body_bot, low[bars], bottomwick, bottomwickvol) / 2)
+
+    totalvols = array.new_float(cnum, 0.)
+    for x = 0 to cnum - 1 by 1
+        array.set(totalvols, x, array.get(volumes, x) + array.get(volumes, x + cnum))
+
+    int poc = array.indexof(totalvols, array.max(totalvols))
+
+    // calculate value area
+    totalmax = array.sum(totalvols) * percent / 100.
+    va_total = array.get(totalvols, poc)
+    int up = poc
+    int down = poc
+    for x = 0 to cnum - 1 by 1
+        if va_total >= totalmax
+            break
+        uppervol = up < cnum - 1 ? array.get(totalvols, up + 1) : 0.
+        lowervol = down > 0 ? array.get(totalvols, down - 1) : 0.
+        if uppervol == 0 and lowervol == 0
+            break
+        if uppervol >= lowervol
+            va_total += uppervol
+            up += 1
+            up
+        else
+            va_total += lowervol
+            down -= 1
+            down
+
+    maxvol = array.max(totalvols)
+    for x = 0 to cnum * 2 - 1 by 1
+        array.set(volumes, x, array.get(volumes, x) * bbars / (3 * maxvol))
+
+    // Draw VP rows
+    var vol_bars = array.new_box(cnum * 2, na)
+    for x = 0 to cnum - 1 by 1
+        box.delete(array.get(vol_bars, x))
+        box.delete(array.get(vol_bars, x + cnum))
+        array.set(vol_bars, x, box.new(bar_index - bbars + 1,
+                                       array.get(levels, x + 1) - vp_dist,
+                                       bar_index - bbars + 1 + math.round(array.get(volumes, x)),
+                                       array.get(levels, x) + vp_dist,
+                                       border_width=0,
+                                       bgcolor=x >= down and x <= up ? vup_color : up_color))
+        array.set(vol_bars, x + cnum, box.new(bar_index - bbars + 1 + math.round(array.get(volumes, x)),
+                                              array.get(levels, x + 1) - vp_dist,
+                                              bar_index - bbars + 1 + math.round(array.get(volumes, x)) + math.round(array.get(volumes, x + cnum)),
+                                              array.get(levels, x) + vp_dist,
+                                              border_width=0,
+                                              bgcolor=x >= down and x <= up ? vdown_color : down_color))
+
+    // Draw POC line and label
+    poc_level = (array.get(levels, poc) + array.get(levels, poc + 1)) / 2
+    var line poc_line = na
+    line.delete(poc_line)
+    poc_line := line.new(bar_index - bbars + 1, poc_level, bar_index - bbars + 2, poc_level, extend=extend.right, color=poc_color, width=poc_width)
+
+    if show_poc
+        var label poc_label = na
+        label.delete(poc_label)
+        poc_label := label.new(bar_index + 15, poc_level,
+                               text="POC: " + str.tostring(math.round_to_mintick(poc_level)),
+                               style=close >= poc_level ? label.style_label_up : label.style_label_down)
