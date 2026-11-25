@@ -37,7 +37,7 @@ export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone
     const state={instanceId:crypto.randomUUID(),chart,candles,watermark,series:[],groups:[],data:[],candleMap:new Map(),previous:null,profileLines:[],frame:0,profile:[],axisWidth:70,disposed:false,drawingListeners:new Set()};runtime.current=state;setDrawingApi(state);
     function readValues(event){
       const lastTime=state.data.at(-1)?.time;
-      setReadouts(state.groups.map(group=>({...group,values:group.members.map(member=>{const last=member.data.at(-1),value=event?.time?event.seriesData.get(member.api)?.value:last&&(last.time===lastTime||member.confirmed)?last.value:null,point=member.pointColors?.get(event?.time?timeKey(event.time):lastTime);return {name:member.name,value:number(value,member.format,callbacks.current.volumeUnit,callbacks.current.pricePrecision??3),color:point||member.color};})})));
+      setReadouts(state.groups.map(group=>({...group,values:group.fixedValues?group.fixedValues.map(item=>({...item,value:number(item.value,undefined,'',callbacks.current.pricePrecision??3),color:group.color})):group.members.map(member=>{const last=member.data.at(-1),value=event?.time?event.seriesData.get(member.api)?.value:last&&(last.time===lastTime||member.confirmed)?last.value:null,point=member.pointColors?.get(event?.time?timeKey(event.time):lastTime);return {name:member.name,value:number(value,member.format,callbacks.current.volumeUnit,callbacks.current.pricePrecision??3),color:point||member.color};})})));
     }
     state.readValues=readValues;
     const update=()=>{
@@ -55,8 +55,8 @@ export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone
         setProfileWidth(width);setProfileSummary(area);
         state.profile=bins.map((b,i)=>({...b,poc:i===area?.poc,inValueArea:!!area&&i>=area.low&&i<=area.high,y1:candles.priceToCoordinate(b.high),y2:candles.priceToCoordinate(b.low),width:b.volume/max*(width-8)})).filter(b=>b.y1!==null&&b.y2!==null);setProfile(state.profile);
         if(area){
-          if(options.showPOC)state.profileLines.push(candles.createPriceLine({price:area.pocPrice,color:options.pocColor,lineWidth:2,lineStyle:2,axisLabelVisible:true,title:'POC'}));
-          if(options.showVA)for(const [title,price] of [['VAH',area.vah],['VAL',area.val]])state.profileLines.push(candles.createPriceLine({price,color:options.color,lineWidth:1,lineStyle:2,axisLabelVisible:true,title}));
+          if(options.showPOC)state.profileLines.push(candles.createPriceLine({price:area.pocPrice,color:options.pocColor,lineWidth:2,lineStyle:2,axisLabelVisible:false,title:'POC'}));
+          if(options.showVA)for(const [title,price] of [['VAH',area.vah],['VAL',area.val]])state.profileLines.push(candles.createPriceLine({price,color:options.color,lineWidth:1,lineStyle:2,axisLabelVisible:false,title}));
         }
       });
     };
@@ -115,7 +115,11 @@ export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone
     for(const study of studies){
       if(!study.visible)continue;const definition=indicatorDefinition(study.type),input=['dottedTrend','pivotLows'].includes(study.type)?data.filter(b=>rsAsOf!==undefined&&b.time<=rsAsOf):data,calculation=calculateStudy(study,input,{confirmedBars:data.filter(point=>rsAsOf!==undefined&&point.time<=rsAsOf),profileAllowed:hasVolume(symbol)&&!isIndexAggregateVolume(symbol)}),pane=definition.placement==='panel'?nextPane++:0;
       if(calculation.learning)state.learningStudies.push({study,model:calculation.learning});
-      if(calculation.template)state.templateStudies.push({study,model:calculation.template});
+      if(calculation.template){
+        state.templateStudies.push({study,model:calculation.template});
+        if(study.type==='pineVolumeProfile'){const profile=calculation.template.profile;state.groups.push({id:study.id,label:studyLabel(study),pane:0,color:study.color,members:[],fixedValues:[['POC',profile?.pocPrice],['VAH',profile?.vah],['VAL',profile?.val]].map(([name,value])=>({name,value}))});}
+        continue;
+      }
       const specs=calculation.series.length?calculation.series:[{name:definition.short,color:study.color,data:[]}],members=specs.map(spec=>add({...spec,width:study.width||1},pane,calculation.bounds));
       for(const value of calculation.bands)members[0].api.createPriceLine({price:value,color:'#b2bdcf',lineWidth:1,lineStyle:2,axisLabelVisible:false});
       state.groups.push({id:study.id,label:studyLabel(study),pane,color:study.color,members});

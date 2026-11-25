@@ -32,9 +32,9 @@ export function pineFixedProfile(bars,{profileBars=150,rows=24,valueArea=70}={})
  return {...base,status:base.missingVolumeBars?'partial':'ready',top,bottom,allocatedVolume:total,pocIndex:poc,pocPrice:(bins[poc].low+bins[poc].high)/2,vah:bins[up].high,val:bins[down].low,actualValueAreaPercent:accumulated/total*100,
   bins:bins.map((b,i)=>({...b,inValueArea:i>=down&&i<=up,upWidth:Math.round(b.up*factor),downWidth:Math.round(b.down*factor)})),gap:(top-bottom)/500};
 }
-export function pineTemplate(bars,params,confirmedBars=bars,{profileAllowed=true}={}){
- const current=bars.slice(-params.highLookback),low=bars.slice(-params.lowLookback);
- return {table:uploadedMinervini(confirmedBars,{highLookback:params.highLookback,lowLookback:params.lowLookback}),currentAsOf:bars.at(-1)?.time,
-  high:current.length?Math.max(...current.map(b=>b.high)):null,low:low.length?Math.min(...low.map(b=>b.low)):null,
-  profile:params.showFixedProfile&&profileAllowed?pineFixedProfile(bars,params):null,profileAllowed};
+export function pineTemplate(bars,params,confirmedBars=bars){
+ return {kind:'minerviniTemplate',table:uploadedMinervini(confirmedBars,{highLookback:params.highLookback,lowLookback:params.lowLookback})};
+}
+export function pineProfile(bars,params,{profileAllowed=true}={}){
+ return {kind:'pineVolumeProfile',currentAsOf:bars.at(-1)?.time,profile:profileAllowed?pineFixedProfile(bars,params):null,profileAllowed};
 }

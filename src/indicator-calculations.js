@@ -1,4 +1,4 @@
-import {pineTemplate} from './pine-template.js';
+import {pineTemplate,pineProfile} from './pine-template.js';
 import {rollingMean,emaValues,rmaValues,movingAverageValues} from './technical-math.js';
 import {dottedTrend,pivotLowStudy} from './trend-learning.js';
 const avg=values=>values.reduce((a,b)=>a+b,0)/values.length;
@@ -8,7 +8,8 @@ export function rsiValues(bars,n){
 }
 export function atrValues(bars,n){let value=null,seed=[];return bars.map((b,i)=>{if(!i)return null;const prev=bars[i-1].close,tr=Math.max(b.high-b.low,Math.abs(b.high-prev),Math.abs(b.low-prev));if(value===null){seed.push(tr);if(seed.length<n)return null;value=avg(seed);}else value=(value*(n-1)+tr)/n;return value;});}
 export function calculateStudy(study,bars,context={}){
-  if(study.type==='minerviniTemplate')return {series:[{name:'미너비니 조건표',color:study.color,data:[]}],bands:[],bounds:null,template:pineTemplate(bars,study.params,context.confirmedBars??bars,{profileAllowed:context.profileAllowed!==false})};
+  if(study.type==='minerviniTemplate')return {series:[{name:'미너비니 조건표',color:study.color,data:[]}],bands:[],bounds:null,template:pineTemplate(bars,study.params,context.confirmedBars??bars)};
+  if(study.type==='pineVolumeProfile')return {series:[],bands:[],bounds:null,template:pineProfile(bars,study.params,{profileAllowed:context.profileAllowed!==false})};
   if(study.type==='dottedTrend'){const learning=dottedTrend(bars,study.params);return {series:[{name:'점선 추세선 · 종가 평활',color:study.color,kind:'line',lineStyle:'dotted',confirmed:true,data:learning.curve.map(({time,value})=>({time,value}))}],bands:[],bounds:null,learning};}
   if(study.type==='pivotLows'){const learning=pivotLowStudy(bars,study.params);return {series:[{name:'저점 확인',color:study.color,data:[]}],bands:[],bounds:null,learning};}
   const p=study.params,close=bars.map(b=>b.close),line=(name,values,color=study.color,kind='line',format='price')=>({name,color,kind,format,data:values.flatMap((v,i)=>Number.isFinite(v)?[{time:bars[i].time,value:v}]:[])});
