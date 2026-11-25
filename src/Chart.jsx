@@ -5,6 +5,7 @@ import {createChart,CandlestickSeries,LineSeries,HistogramSeries,ColorType,Cross
 import {aggregate,rsLine,volumeProfile} from './analysis.js';
 import {indicatorDefinition,nextLogicalRange,studyLabel} from './indicators.js';
 import {calculateStudy} from './indicator-calculations.js';
+import {mergeCurveAutoscale} from './trend-learning.js';
 import {movingAveragePoints,movingAverageValues,profileValueArea,formatVolume,resolveCandle,chartTimeKey} from './technical-math.js';
 import {CHART_COLORS,volumePoints} from './chart-colors.js';
 import {useDrawings,DrawingToolbar,DrawingLayer,paintDrawing} from './DrawingTools.jsx';
@@ -38,7 +39,7 @@ export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone
     const state={instanceId:crypto.randomUUID(),chart,candles,watermark,series:[],groups:[],data:[],candleMap:new Map(),previous:null,profileLines:[],frame:0,profile:[],axisWidth:70,disposed:false,drawingListeners:new Set()};runtime.current=state;setDrawingApi(state);
     function readValues(event){
       const lastTime=state.data.at(-1)?.time;
-      setReadouts(state.groups.map(group=>({...group,values:group.fixedValues?group.fixedValues.map(item=>({...item,value:number(item.value,undefined,'',callbacks.current.pricePrecision??3),color:group.color})):group.members.map(member=>{const last=member.data.at(-1),value=event?.time?event.seriesData.get(member.api)?.value:last&&(last.time===lastTime||member.confirmed)?last.value:null,point=member.pointColors?.get(event?.time?timeKey(event.time):lastTime);return {name:member.name,value:number(value,member.format,callbacks.current.volumeUnit,callbacks.current.pricePrecision??3),color:point||member.color};})})));
+      setReadouts(state.groups.map(group=>({...group,values:group.fixedValues?group.fixedValues.map(item=>({...item,value:number(item.value,undefined,'',callbacks.current.pricePrecision??3),color:group.color})):group.members.map(member=>{const last=member.data.at(-1),value=event?.time?event.seriesData.get(member.api)?.value:member.latestValue??(last&&(last.time===lastTime||member.confirmed)?last.value:null),point=member.pointColors?.get(event?.time?timeKey(event.time):lastTime);return {name:member.name,value:number(value,member.format,callbacks.current.volumeUnit,callbacks.current.pricePrecision??3),color:point||member.color};})})));
     }
     state.readValues=readValues;
     const update=()=>{
@@ -125,6 +126,9 @@ export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone
       for(const value of calculation.bands)members[0].api.createPriceLine({price:value,color:'#b2bdcf',lineWidth:1,lineStyle:2,axisLabelVisible:false});
       state.groups.push({id:study.id,label:studyLabel(study),pane,color:study.color,members});
     }
+    // The candle scale also covers a shifted curve whose entire data is to the
+    // right of the last quote (too few bars for a native historical segment).
+    candles.applyOptions({autoscaleInfoProvider:original=>mergeCurveAutoscale(original(),state.learningStudies.filter(row=>row.study.type==='dottedTrend').map(row=>row.model.curve),chart.timeScale().getVisibleLogicalRange())});
     // Set all pane weights together. Repeated setHeight calls redistribute
     // earlier panes and progressively squash volume/RS on study add/remove.
     let panelHeight=0;for(const group of state.groups.filter(group=>group.pane>0)){const height=paneHeights.get(group.id)||120;chart.panes()[group.pane].setStretchFactor(height);panelHeight+=height;}
