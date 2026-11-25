@@ -1,7 +1,7 @@
 import React,{useCallback,useEffect,useRef,useState} from 'react';
 import {X} from 'lucide-react';
 import {hasVolume,isIndexAggregateVolume} from './instruments.js';
-import {createChart,CandlestickSeries,LineSeries,HistogramSeries,ColorType,CrosshairMode,LineStyle} from 'lightweight-charts';
+import {createChart,CandlestickSeries,LineSeries,HistogramSeries,ColorType,CrosshairMode,LineStyle,PriceScaleMode} from 'lightweight-charts';
 import {aggregate,rsLine,volumeProfile} from './analysis.js';
 import {indicatorDefinition,nextLogicalRange,studyLabel} from './indicators.js';
 import {calculateStudy} from './indicator-calculations.js';
@@ -20,7 +20,7 @@ import PineTemplateLayer,{paintPineTemplates} from './PineTemplateLayer.jsx';
 const timeKey=chartTimeKey;
 const number=(value,format,unit='주',precision=3)=>!Number.isFinite(value)?'—':format==='koVolume'?formatVolume(value,'korean',unit):format==='shares'?formatVolume(value,'shares',unit):format==='volume'?Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:2}).format(value):`${value.toLocaleString('ko-KR',{maximumFractionDigits:Math.max(3,precision)})}${format==='percent'?'%':''}`;
 
-export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone,drawingKey,bars,benchmark,interval,range,showRS,showVolume,showProfile,movingAverages,volumeSettings,profileSettings,studies,onRemoveStudy,onEditStudies,onHover,onReady,onAlert,volumeUnit='주',pricePrecision,syncHub,syncId='main',syncOptions,replay=false,priceMode='candles'}){
+export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone,drawingKey,bars,benchmark,interval,range,showRS,showVolume,showProfile,movingAverages,volumeSettings,profileSettings,studies,onRemoveStudy,onEditStudies,onHover,onReady,onAlert,volumeUnit='주',pricePrecision,syncHub,syncId='main',syncOptions,replay=false,priceMode='candles',logScale=false}){
   const [menu,setMenu]=useState(null),closeMenu=useCallback(()=>setMenu(null),[]),[legendExpanded,setLegendExpanded]=useState(false);
   const drawing=useDrawings(drawingKey,{temporary:replay}),[drawingApi,setDrawingApi]=useState(null),[templateControls,setTemplateControls]=useState(null);
   const profileVisible=showProfile&&!isIndexAggregateVolume(symbol);
@@ -73,6 +73,13 @@ export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone
     }};state.publicApi=readyApi;callbacks.current.onReady?.(readyApi);
     return()=>{state.disposed=true;state.drawingListeners.clear();cancelAnimationFrame(state.frame);observer.disconnect();container.removeEventListener('pointerup',update);container.removeEventListener('pointermove',dragged);container.removeEventListener('wheel',update);chart.unsubscribeDblClick(doubleClick);chart.unsubscribeCrosshairMove(crosshair);chart.timeScale().unsubscribeVisibleLogicalRangeChange(update);watermark.detach();chart.remove();runtime.current=null;callbacks.current.onReady?.(null);};
   },[priceMode]);
+
+  useEffect(()=>{
+    const state=runtime.current;if(!state)return;
+    const scale=state.chart.priceScale('right',0);
+    scale.applyOptions({mode:logScale?PriceScaleMode.Logarithmic:PriceScaleMode.Normal,autoScale:true});
+    host.current.dataset.priceScaleMode=String(scale.options().mode);state.schedule();
+  },[logScale,priceMode]);
 
   useEffect(()=>{
     const state=runtime.current;if(!state||!bars.length)return;

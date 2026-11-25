@@ -79,3 +79,6 @@ footer{display:flex;align-items:center;flex-wrap:wrap;gap:15px;padding:23px 0 20
 .chart-timezone{margin-left:auto;flex-shrink:0;color:#65748b;font-size:10px;white-space:nowrap}@media(max-width:700px){.chart-timezone{font-size:9px}.chart-timezone>span{display:none}}
 
 .index-volume-note{font-size:10px;line-height:1.5;color:#6c7d92;padding:4px 12px;border-bottom:1px solid #e7edf5;background:#fafbfd;flex-shrink:0}@media(max-width:700px){.index-volume-note{font-size:9px;padding:4px 7px}}
+
+/* Price-axis mode stays accessible beside the timeframe buttons, including fullscreen. */
+.timeframe-bar{flex-wrap:wrap}.price-scale-toggle{display:inline-flex;align-items:center;gap:5px;flex-shrink:0;white-space:nowrap;font-size:11px;color:#526c8b;cursor:pointer;min-height:30px;padding:3px 6px;border:1px solid #e1e8f2;border-radius:5px;background:#fff}.price-scale-toggle input{margin:0;width:14px;height:14px;accent-color:#2463eb;cursor:pointer}.price-scale-toggle:has(input:checked){background:#edf3ff;color:#245cbe;border-color:#bfd0ff}.price-scale-toggle:focus-within{outline:2px solid #2463eb;outline-offset:1px}@media(max-width:700px){.price-scale-toggle{font-size:10px;min-height:28px;padding:3px 5px;gap:4px}.timeframe-bar .timeframe-buttons{flex:1 1 100%}.timeframe-bar .price-scale-toggle{margin-left:0}.timeframe-bar .chart-timezone{margin-left:auto}}

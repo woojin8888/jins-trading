@@ -64,3 +64,11 @@ test('CCI, MFI, Williams %R, ROC and CMF match direct reference calculations',()
 test('catalogue exposes built-in volume and profile controls without pretending they are custom scripts',()=>{
   assert.ok(BUILTIN_INDICATORS.some(d=>d.type==='volume'&&d.builtin==='showVolume'));assert.ok(BUILTIN_INDICATORS.some(d=>d.type==='volumeProfile'&&d.builtin==='showProfile'));const all=[...INDICATORS,...BUILTIN_INDICATORS];assert.equal(new Set(all.map(d=>d.type)).size,all.length);
 });
+
+test('price-axis mode defaults to normal and persists a validated log choice without changing chart data settings',()=>{
+ const defaults=defaultChartPreferences();assert.equal(defaults.logScale,false);
+ const saved=normalizePreferences({...defaults,logScale:true});assert.equal(saved.logScale,true);assert.deepEqual(normalizePreferences(JSON.parse(JSON.stringify(saved))),saved);
+ const {logScale,...rest}=saved,{logScale:initial,...expected}=defaults;assert.deepEqual(rest,expected);
+ for(const value of ['true',1,null,undefined])assert.equal(normalizePreferences({...defaults,logScale:value}).logScale,false);
+ assert.equal(normalizePreferences({...saved,logScale:false}).logScale,false);
+});
