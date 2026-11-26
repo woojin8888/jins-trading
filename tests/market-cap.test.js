@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {marketCapitalization,capitalizationRequest} from '../server/market-cap.js';
 import {formatMarketCapKRW} from '../src/market-cap.js';
 import {routeMarket} from '../server/market.js';
+import {assetQuote} from '../server/global-data.js';
+import {knownAsset} from '../src/instruments.js';
 const stamp=1795651200;
 function fakeFetch({marketCap=306331050110,currency='KRW',type='stock',fxPrice=1400,failFX=false,wrongSymbol=false}={}){
  return async(url,options)=>{
@@ -39,4 +41,8 @@ test('request identities cover Korean boards and common international symbol spe
 });
 test('the capitalization API validates symbols before any external fetch',async t=>{
  const original=global.fetch;t.after(()=>global.fetch=original);global.fetch=()=>{throw Error('unexpected fetch');};const r=await routeMarket(new URL('https://test/api/market?action=capitalization&market=kr&symbol=not-a-stock'));assert.equal(r.status,400);
+});
+
+test('capitalization FX lookup preserves the public currency listing identity in the shared quote cache',async t=>{
+ const original=global.fetch;t.after(()=>global.fetch=original);global.fetch=fakeFetch({marketCap:1e12,currency:'USD',fxPrice:1400});await marketCapitalization('us','NVDA',{fresh:true});const row=await assetQuote(knownAsset('KRW=X'));assert.equal(row.name,'달러 / 원');assert.equal(row.market,'fx');assert.equal(row.symbol,'KRW=X');
 });

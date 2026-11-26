@@ -1,4 +1,4 @@
-import {MARKETS,assetKind} from '../src/instruments.js';
+import {MARKETS,assetKind,knownAsset} from '../src/instruments.js';
 import {assetQuote} from './global-data.js';
 const cache=new Map(),TTL=300000;
 const COLUMNS=['name','currency','market_cap_basic','type','time'];
@@ -27,7 +27,7 @@ export async function marketCapitalization(market,symbol,{fresh=false}={}){
  if(currency==='KRW'){result.krw=result.nativeValue;result.status='available';}
  else{
   try{
-   const fxSymbol=currency==='USD'?'KRW=X':currency+'KRW=X',fx=await assetQuote({symbol:fxSymbol,market:'fx',kind:'fx',currency:'KRW'},{fresh});
+   const fxSymbol=currency==='USD'?'KRW=X':currency+'KRW=X',fx=await assetQuote({...knownAsset(fxSymbol),symbol:fxSymbol,market:'fx',kind:'fx',currency:'KRW'},{fresh});
    if(fx.currency!=='KRW'||!Number.isFinite(fx.price)||fx.price<=0||!fx.asOf)throw Error('원화 환율을 확인하지 못했습니다.');
    result.fx={symbol:fxSymbol,rate:fx.price,asOf:fx.asOf,source:fx.provider};result.krw=result.nativeValue*fx.price;result.status=Number.isFinite(result.krw)&&result.krw>0?'available':'unavailable';
   }catch{result.reason='원화 환산에 필요한 환율을 확인하지 못했습니다.';}
