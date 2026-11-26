@@ -1,22 +1,7 @@
-export function confirmedPivotLows(bars,left=3,right=3){
-  const signals=[];
-  for(let confirmation=left+right;confirmation<bars.length;confirmation++){
-    const pivot=confirmation-right,price=bars[pivot].low;
-    if(!Number.isFinite(price))continue;
-    // Choose the first equal low; ties cannot generate multiple signals.
-    if(bars.slice(pivot-left,pivot).every(b=>Number.isFinite(b.low)&&b.low>price)&&bars.slice(pivot+1,confirmation+1).every(b=>Number.isFinite(b.low)&&b.low>=price))signals.push({pivotTime:bars[pivot].time,confirmedTime:bars[confirmation].time,pivotIndex:pivot,confirmedIndex:confirmation,price,confirmationLow:bars[confirmation].low,delay:right});
-  }
-  return signals;
-}
 export function dottedTrend(bars,params){
   const input=bars.filter(b=>b.complete!==false),curve=shiftedBollingerUpper(input,params);
   return {kind:'dottedTrend',curve,signals:[],last:curve.at(-1),nativeEndIndex:input.length-1,requiredBars:params.period,availableBars:input.length};
 }
-export function pivotLowStudy(bars,params){
-  const input=bars.filter(b=>b.complete!==false);
-  return {kind:'pivotLows',curve:[],signals:confirmedPivotLows(input,params.left,params.right),requiredBars:params.left+params.right+1,availableBars:input.length};
-}
-
 // Population deviation, matching Pine ta.stdev(close, period)'s default.
 // The +offset is a chart position, never a fabricated future quote/date.
 export function shiftedBollingerUpper(bars,{period=30,deviation=2,offset=26}={}){

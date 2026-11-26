@@ -1,6 +1,6 @@
 import {pineTemplate,pineProfile} from './pine-template.js';
 import {rollingMean,emaValues,rmaValues,movingAverageValues} from './technical-math.js';
-import {dottedTrend,pivotLowStudy} from './trend-learning.js';
+import {dottedTrend} from './trend-learning.js';
 const avg=values=>values.reduce((a,b)=>a+b,0)/values.length;
 export function rsiValues(bars,n){
   let gains=0,losses=0,averageGain=null,averageLoss=null;
@@ -11,7 +11,6 @@ export function calculateStudy(study,bars,context={}){
   if(study.type==='minerviniTemplate')return {series:[{name:'미너비니 조건표',color:study.color,data:[]}],bands:[],bounds:null,template:pineTemplate(bars,study.params,context.confirmedBars??bars)};
   if(study.type==='pineVolumeProfile')return {series:[],bands:[],bounds:null,template:pineProfile(bars,study.params,{profileAllowed:context.profileAllowed!==false})};
   if(study.type==='dottedTrend'){const learning=dottedTrend(bars,study.params);return {series:[{name:'볼린저 상단 · 앞으로 이동',color:study.color,kind:'line',lineStyle:'dotted',confirmed:true,latestValue:learning.last?.value,data:learning.curve.filter(point=>point.time!==undefined).map(({time,value})=>({time,value}))}],bands:[],bounds:null,learning};}
-  if(study.type==='pivotLows'){const learning=pivotLowStudy(bars,study.params);return {series:[{name:'저점 확인',color:study.color,data:[]}],bands:[],bounds:null,learning};}
   const p=study.params,close=bars.map(b=>b.close),line=(name,values,color=study.color,kind='line',format='price')=>({name,color,kind,format,data:values.flatMap((v,i)=>Number.isFinite(v)?[{time:bars[i].time,value:v}]:[])});
   let series=[],bands=[],bounds=null;
   switch(study.type){

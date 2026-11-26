@@ -18,3 +18,7 @@ test('the screenshot draws the same forward vertices and restores canvas line st
  assert.deepEqual(commands.filter(c=>c[0]==='moveTo'||c[0]==='lineTo').map(c=>c.slice(1)),rows[0].curve.map(p=>[p.x,p.y]));
  assert.deepEqual(commands.filter(c=>c[0]==='setLineDash').at(-1),['setLineDash',[]]);assert.equal(commands.at(-1)[0],'restore');
 });
+test('removed legacy low models have no geometry or screenshot markers',()=>{
+ const model=dottedTrend(bars,{period:30,deviation:2,offset:26}),state=api(bars,model);state.learningStudies.unshift({study:{id:'old-low',type:'pivotLows',color:'#ffaa00',width:2,params:{showPivotOrigin:true}},model:{signals:[{pivotTime:bars[1].time,confirmedTime:bars[4].time,price:91,confirmationLow:94}]}});
+ const rows=learningGeometry(state);assert.deepEqual(rows.map(row=>row.id),['trend']);const calls=[];paintLearning(new Proxy({},{get:(_,key)=>(...args)=>calls.push([key,...args]),set:()=>true}),rows,1000);assert.equal(calls.some(([key])=>['arc','fillText','fill'].includes(key)),false);
+});

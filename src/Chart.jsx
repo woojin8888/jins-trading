@@ -115,7 +115,7 @@ export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone
     if(showRS&&(rsMode==='uploaded'||benchmark.length)){const pane=nextPane++,member=add({name:'RS',color:'#8765df',confirmed:rsMode==='uploaded',data:rsMode==='uploaded'?uploadedRS(data).filter(point=>rsAsOf!==undefined&&point.time<=rsAsOf):rsLine(data,aggregate(benchmark,interval))},pane);if(rsMode==='uploaded')member.api.createPriceLine({price:70,color:'#b3a6cd',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'70'});state.groups.push({id:'rs',label:rsMode==='uploaded'?'업로드 RS · 확정봉':'지수 대비 RS · 시작 100',pane,color:member.color,members:[member]});}
     state.learningStudies=[];state.templateStudies=[];
     for(const study of studies){
-      if(!study.visible)continue;const definition=indicatorDefinition(study.type),input=['dottedTrend','pivotLows'].includes(study.type)?data.filter(b=>rsAsOf!==undefined&&b.time<=rsAsOf):data,calculation=calculateStudy(study,input,{confirmedBars:data.filter(point=>rsAsOf!==undefined&&point.time<=rsAsOf),profileAllowed:hasVolume(symbol)&&!isIndexAggregateVolume(symbol)}),pane=definition.placement==='panel'?nextPane++:0;
+      if(!study.visible)continue;const definition=indicatorDefinition(study.type),input=study.type==='dottedTrend'?data.filter(b=>rsAsOf!==undefined&&b.time<=rsAsOf):data,calculation=calculateStudy(study,input,{confirmedBars:data.filter(point=>rsAsOf!==undefined&&point.time<=rsAsOf),profileAllowed:hasVolume(symbol)&&!isIndexAggregateVolume(symbol)}),pane=definition.placement==='panel'?nextPane++:0;
       if(calculation.learning)state.learningStudies.push({study,model:calculation.learning});
       if(calculation.template){
         state.templateStudies.push({study,model:calculation.template});
