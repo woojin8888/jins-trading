@@ -129,6 +129,9 @@ export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone
     // The candle scale also covers a shifted curve whose entire data is to the
     // right of the last quote (too few bars for a native historical segment).
     candles.applyOptions({autoscaleInfoProvider:original=>mergeCurveAutoscale(original(),state.learningStudies.filter(row=>row.study.type==='dottedTrend').map(row=>row.model.curve),chart.timeScale().getVisibleLogicalRange())});
+    // A price-scale mode change also updates the library's defaults for new
+    // panes. Keep RS/oscillators and separate volume panels on a linear scale.
+    for(let pane=1;pane<chart.panes().length;pane++)chart.priceScale('right',pane).applyOptions({mode:PriceScaleMode.Normal});
     // Set all pane weights together. Repeated setHeight calls redistribute
     // earlier panes and progressively squash volume/RS on study add/remove.
     let panelHeight=0;for(const group of state.groups.filter(group=>group.pane>0)){const height=paneHeights.get(group.id)||120;chart.panes()[group.pane].setStretchFactor(height);panelHeight+=height;}
