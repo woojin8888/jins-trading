@@ -1,8 +1,10 @@
 import {anchorAtLogical,timeStamp} from './drawing-model.js';
 export function chartAnchor(api,x,y){
   if(!api?.data.length||!Number.isFinite(x)||!Number.isFinite(y)||x<0||x>api.chart.timeScale().width()||y<0||y>api.chart.panes()[0].getHeight())return null;
-  const point=anchorAtLogical(api.chart.timeScale().coordinateToLogical(x),api.candles.coordinateToPrice(y),api.data.map(b=>timeStamp(b.time)));
-  return point?{...point,dateOnly:typeof api.data[0].time==='string'}:null;
+  const logical=api.chart.timeScale().coordinateToLogical(x);if(!Number.isFinite(logical))return null;
+  const position=logical>=0&&logical<=api.data.length-1?Math.round(logical):logical;
+  const point=anchorAtLogical(position,api.candles.coordinateToPrice(y),api.data.map(b=>timeStamp(b.time)));
+  return point?{...point,dateOnly:typeof api.data[0].time==='string',...(api.interval?{interval:api.interval}:{})}:null;
 }
 export function nearestAverage(api,point,tolerance=8){
   if(!point||!api?.data.length||point.y<0||point.y>api.chart.panes()[0].getHeight())return null;

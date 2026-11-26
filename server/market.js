@@ -1,3 +1,4 @@
+import {marketCapitalization} from './market-cap.js';
 import {treasuryHistory} from './treasury-rates.js';
 import {koreanDailyFallback} from './korean-history.js';
 import {repairKoreanIndexHistory} from './korean-index-repair.js';
@@ -95,6 +96,7 @@ export async function routeMarket(url){
       try{scanRequest(market,sort,offset,board);}catch(error){return reply({error:error.message},400);}
       return reply(await rankedStocks(market,sort,offset,board));
     }
+    if(action==='capitalization'){let symbol;try{symbol=normalizeSymbol(url.searchParams.get('symbol'),market);}catch(error){return reply({error:error.message},400);}return reply(await marketCapitalization(market,symbol,{fresh:url.searchParams.has('fresh')}));}
     if(action!=='history')return reply({error:'지원하지 않는 조회입니다.'},400);
     let symbol;
     try{symbol=normalizeSymbol(url.searchParams.get('symbol'),market);}catch(error){return reply({error:error.message},400);}

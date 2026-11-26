@@ -2,8 +2,8 @@ import {chartAnchorTime,drawingTimeMap,logicalAtTime,timeStamp} from './drawing-
 import {formatBarTime} from './timeframes.js';
 
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
-export function measurementContext(bars,timeZone='UTC',precision=2,displayTimeZone=timeZone){
-  return {times:bars.map(bar=>timeStamp(bar.time)),map:drawingTimeMap(bars,timeZone),precision,displayTimeZone};
+export function measurementContext(bars,timeZone='UTC',precision=2,displayTimeZone=timeZone,interval){
+  return {times:bars.map(bar=>timeStamp(bar.time)),map:drawingTimeMap(bars,timeZone,interval),precision,displayTimeZone};
 }
 export function measurementValues(points,context){
   if(points.length!==2||!context.times.length)return null;

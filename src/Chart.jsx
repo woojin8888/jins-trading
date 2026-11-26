@@ -85,7 +85,7 @@ export default function Chart({symbol,showTickerWatermark,rsMode,rsAsOf,timeZone
 
   useEffect(()=>{
     const state=runtime.current;if(!state||!bars.length)return;
-    state.timeZone=timeZone;state.displayTimeZone=CHART_TIME_ZONE;state.chart.applyOptions({localization:{timeFormatter:time=>formatBarTime(time,CHART_TIME_ZONE)},timeScale:{timeVisible:isIntraday(interval),secondsVisible:false,tickMarkFormatter:isIntraday(interval)?(time,kind)=>tickTime(time,kind,CHART_TIME_ZONE):undefined}});
+    state.timeZone=timeZone;state.interval=interval;state.displayTimeZone=CHART_TIME_ZONE;state.chart.applyOptions({localization:{timeFormatter:time=>formatBarTime(time,CHART_TIME_ZONE)},timeScale:{timeVisible:isIntraday(interval),secondsVisible:false,tickMarkFormatter:isIntraday(interval)?(time,kind)=>tickTime(time,kind,CHART_TIME_ZONE):undefined}});
     const {chart,candles}=state,data=priceMode==='line'?bars:aggregate(bars,interval),previous=state.previous,visible=chart.timeScale().getVisibleLogicalRange();
     const preserve=nextLogicalRange(visible,{dataChanged:previous?.bars!==bars,intervalChanged:previous?.interval!==interval,rangeChanged:previous?.range!==range,oldLength:state.data.length,newLength:data.length});
     const paneHeights=new Map(state.groups.filter(group=>group.pane>0).map(group=>[group.id,group.members[0].api.getPane().getHeight()]));

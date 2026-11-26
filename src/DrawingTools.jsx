@@ -75,12 +75,12 @@ export function DrawingLayer({api,drawing}){
     document.addEventListener('keydown',keydown);return()=>document.removeEventListener('keydown',keydown);
   },[]);
   const times=useMemo(()=>api?.data.map(bar=>timeStamp(bar.time))||[],[api,api?.data]);
-  const timeMap=useMemo(()=>drawingTimeMap(api?.data||[],api?.timeZone||'UTC'),[api,api?.data,api?.timeZone]);
-  const measureContext=useMemo(()=>measurementContext(api?.data||[],api?.timeZone||'UTC',api?.candles.options().priceFormat.precision??2,CHART_TIME_ZONE),[api,api?.data,api?.timeZone]);
+  const timeMap=useMemo(()=>drawingTimeMap(api?.data||[],api?.timeZone||'UTC',api?.interval),[api,api?.data,api?.timeZone,api?.interval]);
+  const measureContext=useMemo(()=>measurementContext(api?.data||[],api?.timeZone||'UTC',api?.candles.options().priceFormat.precision??2,CHART_TIME_ZONE,api?.interval),[api,api?.data,api?.timeZone,api?.interval]);
   if(!api||api.disposed||!api.data.length)return null;
   const plotWidth=Math.max(0,api.chart.timeScale().width()),height=api.chart.panes()[0].getHeight();
   function project(point){const logical=logicalAtTime(chartAnchorTime(point,timeMap),times),x=api.chart.timeScale().logicalToCoordinate(logical),y=api.candles.priceToCoordinate(point.price);return x===null||y===null?null:{x,y};}
-  function anchor(event,type=d.tool){const rect=svg.current.getBoundingClientRect(),x=Math.max(0,Math.min(plotWidth,event.clientX-rect.left)),y=Math.max(0,Math.min(height,event.clientY-rect.top)),logical=api.chart.timeScale().coordinateToLogical(x),price=api.candles.coordinateToPrice(y);if(logical===null)return null;const measured=isMeasurement(type),position=measured?Math.max(0,Math.min(times.length-1,Math.round(logical))):logical,point=anchorAtLogical(position,price,times,{allowSigned:measured});return point?{...point,dateOnly:typeof api.data[0].time==='string'}:null;}
+  function anchor(event,type=d.tool){const rect=svg.current.getBoundingClientRect(),x=Math.max(0,Math.min(plotWidth,event.clientX-rect.left)),y=Math.max(0,Math.min(height,event.clientY-rect.top)),logical=api.chart.timeScale().coordinateToLogical(x),price=api.candles.coordinateToPrice(y);if(logical===null)return null;const measured=isMeasurement(type),position=measured?Math.max(0,Math.min(times.length-1,Math.round(logical))):logical>=0&&logical<=times.length-1?Math.round(logical):logical,point=anchorAtLogical(position,price,times,{allowSigned:measured});return point?{...point,dateOnly:typeof api.data[0].time==='string',interval:api.interval}:null;}
   function create(event){
     if(!d.ready||event.button!==0)return;if(d.tool==='select'){d.setSelectedId(null);return;}event.preventDefault();event.stopPropagation();svg.current.focus();const point=anchor(event);if(!point)return;
     if(d.tool==='text'&&!d.text.trim())return;
