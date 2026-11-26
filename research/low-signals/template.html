@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Jin's Trading · 저점 신호 연구실</title>
+<style>
+:root{font-family:system-ui,-apple-system,'Noto Sans KR',sans-serif;color:#172b43;background:#f5f7fb;font-size:16px}*{box-sizing:border-box}body{margin:0}main{max-width:1400px;margin:auto;padding:24px}h1{font-size:1.7rem;margin:.3em 0}h2{font-size:1.1rem;margin:0 0 14px}.brand{color:#3457ac;font-weight:750;letter-spacing:.08em;font-size:.85rem}.intro{color:#53637a;line-height:1.7;margin:8px 0 20px}.notice{background:#fff7e7;border:1px solid #e7d4ad;border-radius:10px;padding:14px 16px;line-height:1.65;margin:14px 0}.card{background:white;border:1px solid #dce3ee;border-radius:14px;padding:20px;margin:16px 0;box-shadow:0 3px 12px #233b6105}.controls{display:flex;gap:14px;flex-wrap:wrap;align-items:end}label{display:grid;gap:7px;color:#53637a;font-size:.9rem}select{appearance:none;padding-right:30px!important;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2353637a' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}select,input,button{font:inherit;color:#24384e;border:1px solid #ccd6e3;background:white;border-radius:7px;padding:9px 10px;min-height:42px}button{cursor:pointer}button:hover{background:#eef2fa}button:disabled{opacity:.4;cursor:default}input[type=number]{width:106px}input[type=checkbox]{min-height:18px;width:18px;accent-color:#3457ac}label.check{display:flex;align-items:center;gap:7px;min-height:42px}.formula{margin-top:16px;line-height:1.7;background:#f5f7fa;padding:12px;border-radius:8px;font-size:.9rem}.muted{color:#63758b;font-size:.88rem;line-height:1.65}.pill{display:inline-block;background:#eef2fa;color:#3457ac;border-radius:5px;padding:4px 8px;font-size:.85rem}.legend{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0;font-size:.88rem}.orange{color:#a56c00}.purple{color:#6545ac}.replay{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.replay input[type=range]{flex:1;min-width:140px;accent-color:#3457ac;padding:0}.chart{height:440px;width:100%;display:block;touch-action:pan-y}.readout{min-height:54px;font-size:.9rem;line-height:1.7;font-variant-numeric:tabular-nums;padding:6px 0}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0}.metric{background:#f5f7fa;border-radius:8px;padding:12px}.metric b{display:block;font-size:1.35rem;margin-bottom:3px}.metric span{font-size:.85rem;color:#63758b}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;text-align:left;font-size:.88rem}th,td{padding:11px 12px;border-bottom:1px solid #e7ecf3;white-space:nowrap}th{color:#63758b;font-weight:550}td.num{text-align:right;font-variant-numeric:tabular-nums}.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}.two .card{margin-top:0}summary{cursor:pointer;font-weight:650}details p{line-height:1.7}.time-status{font-size:.88rem;font-weight:650;color:#3457ac}.warning-text{color:#965a00}.footer{font-size:.85rem;color:#63758b;line-height:1.7;margin:24px 0}a{color:#3457ac}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #9ab9f5;outline-offset:2px}@media(max-width:700px){main{padding:12px}.card{padding:14px}.two{display:block}.metrics{grid-template-columns:repeat(2,1fr)}h1{font-size:1.4rem}.controls>label:first-child{flex:1}.controls select{max-width:100%}.controls>label:nth-child(2){width:100%}.chart{height:420px}th,td{padding:10px 8px}}
+</style></head><body><main>
+<div class="brand">JIN'S TRADING · RESEARCH</div><p><a href="/">진스트레이딩 차트로 돌아가기</a></p><h1>저점 신호 연구실</h1>
+<p class="intro">보내준 TradingView 신호와 후보 계산식을 같은 시세에 겹쳐 비교합니다. 조건을 바꿔 보고, 봉을 한 개씩 진행하며 신호가 실제로 언제 확인되는지 살펴볼 수 있습니다.</p>
+<div class="notice"><strong>원본 공식은 아직 미확인입니다.</strong> 아래 네 가지는 비교를 위한 독립적인 가설입니다. 원본과 같은 지표나 매매 추천으로 표시하지 않습니다.<br><span class="muted">정규장 일봉 저장본 · 마지막 데이터 2026-11-25 · 시세 자동 갱신 없음 · 기본 차트의 자동 신호로 적용하지 않습니다.</span></div>
+<section class="card" aria-label="후보 규칙 설정"><div class="controls">
+<label>종목<select id="symbol"></select></label>
+<label>비교할 후보<select id="model"><option value="band">밴드 이탈 + 음봉</option><option value="rsi">RSI 하한 조건</option><option value="return">5봉 급락 + RSI 조건</option><option value="rebound">밴드 이탈 후 반등 확인</option></select></label>
+<label data-fields="band rebound">밴드 기간<input id="period" type="number" min="2" max="500" value="20"></label>
+<label data-fields="band return rebound">표준편차 배수<input id="deviation" type="number" min="0.1" max="10" step="0.1" value="2"></label>
+<label data-fields="rsi return">RSI 기간<input id="rsiPeriod" type="number" min="2" max="100" value="2"></label>
+<label data-fields="rsi return">RSI 상한<input id="rsiThreshold" type="number" min="0" max="100" step="1" value="10"></label>
+<label data-fields="rebound">반등 확인율 (%)<input id="rebound" type="number" min="0.1" max="100" step="0.1" value="2.5"></label>
+<label class="check" data-fields="band"><input id="bearish" type="checkbox" checked>종가 &lt; 시가</label>
+<label class="check" data-fields="band rsi return"><input id="entry" type="checkbox" checked>조건 최초 충족만</label>
+<label class="check" data-fields="rebound"><input id="historical" type="checkbox">과거 후보봉에 사후 표시</label>
+<label class="check"><input id="log" type="checkbox">로그 눈금</label>
+</div><div class="formula" id="formula"></div></section>
+<section class="card"><div class="replay"><button id="previous" type="button" aria-label="이전 봉">이전 봉</button><input id="cursor" type="range" aria-label="확인 시점"><button id="next" type="button">다음 봉</button><input id="date" type="date" aria-label="확인할 날짜"><button id="latest" type="button">마지막 봉</button><label>표시 범위<select id="window"><option value="180">최근 180봉</option><option value="500">최근 500봉</option><option value="all">사진 구간 전체</option></select></label></div>
+<p class="muted">슬라이더 날짜까지의 봉만 계산에 사용합니다. 반등 확인형은 반등이 나오기 전에는 과거의 후보봉에도 확정 신호가 없습니다.</p>
+<div class="time-status" id="time-status"></div><div class="legend"><span class="orange">● 사진에서 관찰한 점 · 빈 원은 날짜 추정</span><span class="purple">◆ 후보 규칙 · 빈 원은 사후 후보봉</span><span>양봉 빨강 / 음봉 파랑 · 아래 거래량</span></div>
+<div id="readout" class="readout" aria-live="polite"></div><svg id="chart" class="chart" role="img" aria-label="가격·거래량과 원본 참조·후보 신호 비교 차트"></svg>
+<div class="metrics" id="metrics"></div><p id="evaluation-note" class="muted"></p>
+</section>
+<section class="card"><h2>같은 조건으로 다른 종목도 비교</h2><p class="muted">선택 날짜까지의 자료로 비교합니다. 사진에서 읽은 날짜는 ±2봉 범위로 대조하고, 십자선으로 확인한 날짜는 정확히 일치해야 합니다. ‘추가’는 사진 참조에 없는 점으로, 원본의 실제 0 출력이 확인된 날과 구분합니다.</p><div class="table-wrap"><table><thead><tr><th>종목</th><th>사진 점과 일치</th><th>참조에 없는 추가 점</th><th>사진 점 누락</th><th>확인된 0과 충돌</th></tr></thead><tbody id="cross-stock"></tbody></table></div></section>
+<div class="two"><section class="card"><h2>계산된 신호와 확인 날짜</h2><div class="table-wrap"><table><thead><tr><th>후보봉</th><th>확인한 봉</th><th>확인 지연</th></tr></thead><tbody id="signal-rows"></tbody></table></div><p class="muted">사후에 과거 봉에 붙인 점은 그 당시 알 수 있었던 신호가 아닙니다. 최신 12개만 표시합니다.</p><button id="download" type="button">이 조건의 계산 결과 CSV 저장</button></section>
+<section class="card"><h2>사진에서 직접 확인한 원본 출력</h2><div class="table-wrap"><table><thead><tr><th>날짜</th><th>출력값</th><th>근거</th></tr></thead><tbody id="reference-rows"></tbody></table></div></section></div>
+<section class="card"><details><summary>지금까지 확인된 것과 남은 불확실성</summary><div id="research-summary"></div><p>주황색 0·1 출력은 사진의 점 유무와 함께 기록했지만, 출력 필드의 이름은 확인하지 못했습니다. 과거 사진만으로 원본의 발생 시점·오프셋·재표시 여부를 확정할 수 없습니다. 작은 사진에서 겹친 점이 누락되었거나 날짜가 어긋났을 가능성도 있습니다.</p><p>조건을 많이 시도한 뒤 잘 맞는 것만 고르면 과거 자료에만 맞추기 쉽습니다. 따라서 조합 수나 일치 비율을 사이트 신뢰도·수익률·실시간 신호 정확도로 해석하지 않습니다.</p></details></section>
+<p class="footer">데이터: 진스트레이딩 공개 history API 저장본 및 사용자가 제공한 TradingView 이미지의 수동 관찰. 원본의 비공개 코드에 접근하지 않았습니다. 이 파일은 인터넷 연결 없이 열 수 있으며 입력이나 시세를 외부로 전송하지 않습니다.</p>
+</main>
+<script>
+__ENGINE__
+const DATA=__DATA__;
+const STATS=__STATS__;
+const $=id=>document.getElementById(id),ns='http://www.w3.org/2000/svg';
+for(const symbol of ['NVDA','MA','MRK','AMD','GILD','LLY','IREN']){$('symbol').add(new Option(symbol,symbol));}
+const money=n=>Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const compact=n=>n>=1e8?(n/1e8).toFixed(2)+'억주':n>=1e4?(n/1e4).toFixed(1)+'만주':Math.round(n).toLocaleString()+'주';
+let state,barGeometry=[];
+function config(){return {model:$('model').value,period:+$('period').value,deviation:+$('deviation').value,rsiPeriod:+$('rsiPeriod').value,rsiThreshold:+$('rsiThreshold').value,rebound:+$('rebound').value,bearish:$('bearish').checked,entry:$('entry').checked};}
+function resetSymbol(){const d=DATA[$('symbol').value];$('cursor').min=Math.max(1,d.bars.findIndex(b=>b.time>=d.startTime));$('cursor').max=d.bars.length-1;$('cursor').value=d.bars.length-1;$('date').min=d.bars[+$('cursor').min].time;$('date').max=d.bars.at(-1).time;render();}
+function formula(c){
+  if(c.model==='rsi')return `Wilder RSI(${c.rsiPeriod}) < ${c.rsiThreshold} · ${c.entry?'이전 봉이 조건을 만족하지 않은 경우에만 표시합니다.':'조건에 해당하는 모든 확정봉에 표시합니다.'}`;
+  if(c.model==='band')return `저가 < SMA(종가, ${c.period}) − ${c.deviation} × 모집단 표준편차(종가, ${c.period})${c.bearish?' · 종가 < 시가':''} · ${c.entry?'합친 조건을 처음 충족한 봉만 표시합니다.':'조건을 충족하는 모든 봉을 표시합니다.'}`;
+  if(c.model==='return')return `${c.returnPeriod}봉 수익률 < 최근 ${c.returnWindow}개 수익률 평균 − ${c.deviation} × 표준편차, 동시에 Wilder RSI(${c.rsiPeriod}) < ${c.rsiThreshold} · ${c.entry?'조건 최초 충족만 표시합니다.':'모든 충족봉을 표시합니다.'}`;
+  return `종가가 BB(${c.period}, ${c.deviation}) 하단을 이탈하면 후보를 추적합니다. 이후 종가 최저값을 갱신하다가 그 종가보다 ${c.rebound}% 높은 종가를 확인하면 확정합니다. ${$('historical').checked?'현재 선택: 과거 후보봉에 사후 표시 · 미래 반등 확인 뒤에만 나타납니다.':'현재 선택: 반등을 확인한 봉에 표시합니다.'}`;
+}
+function element(tag,attrs={},text){const n=document.createElementNS(ns,tag);for(const [k,v]of Object.entries(attrs))n.setAttribute(k,v);if(text!==undefined)n.textContent=text;return n;}
+function drawChart(){
+ const svg=$('chart');svg.replaceChildren();barGeometry=[];if(!state)return;
+ const {model,d,position,endIndex}=state,all=model.bars,window=$('window').value;
+ const first=Math.max(all.findIndex(b=>b.time>=d.startTime),window==='all'?0:all.length-Number(window));
+ const b=all.slice(first),W=Math.max(340,svg.clientWidth),H=svg.clientHeight||440,left=10,right=72,top=12,priceBottom=310,volumeTop=335,bottom=H-28;
+ svg.setAttribute('viewBox',`0 0 ${W} ${H}`);if(!b.length)return;
+ const prices=b.flatMap(x=>[x.low,x.high]),log=$('log').checked,trans=n=>log?Math.log(n):n;
+ let lo=Math.min(...prices),hi=Math.max(...prices),tlo=trans(lo),thi=trans(hi),padding=Math.max((thi-tlo)*.1,.0001);tlo-=padding;thi+=padding;
+ const px=(W-left-right)/b.length,x=i=>left+(i+.5)*px,y=p=>top+(thi-trans(p))/(thi-tlo)*(priceBottom-top),inv=v=>log?Math.exp(v):v;
+ svg.append(element('defs'));const clip=element('clipPath',{id:'price-clip'});clip.append(element('rect',{x:left,y:top,width:W-left-right,height:priceBottom-top}));svg.firstChild.append(clip);
+ for(let i=0;i<=5;i++){const yy=top+(priceBottom-top)*i/5;svg.append(element('line',{x1:left,x2:W-right,y1:yy,y2:yy,stroke:'#edf1f6'}));svg.append(element('text',{x:W-right+8,y:yy+4,fill:'#6d7c90','font-size':12},money(inv(thi-(thi-tlo)*i/5))));}
+ const group=element('g',{'clip-path':'url(#price-clip)'}),byDate=new Map(all.map((v,i)=>[v.time,i]));
+ const path=model.lower.slice(first).map((v,i)=>v!==null&&v>0?`${i===0||model.lower[first+i-1]===null?'M':'L'}${x(i).toFixed(2)},${y(v).toFixed(2)}`:'').join('');
+ if(['band','rebound'].includes(model.config.model))group.append(element('path',{d:path,fill:'none',stroke:'#8d9ab1','stroke-dasharray':'4 4','stroke-width':1.2}));
+ const maxVolume=Math.max(1,...b.map(b=>b.volume||0));
+ b.forEach((v,i)=>{const xx=x(i),color=v.close>=v.open?'#e84b56':'#3375e9',ww=Math.max(.5,Math.min(8,px*.7));group.append(element('line',{x1:xx,x2:xx,y1:y(v.high),y2:y(v.low),stroke:color,'stroke-width':Math.max(.6,Math.min(1,px*.5))}));group.append(element('rect',{x:xx-ww/2,y:y(Math.max(v.open,v.close)),width:ww,height:Math.max(1,Math.abs(y(v.open)-y(v.close))),fill:color}));svg.append(element('rect',{x:xx-ww/2,y:bottom-(bottom-volumeTop)*(v.volume||0)/maxVolume,width:ww,height:(bottom-volumeTop)*(v.volume||0)/maxVolume,fill:color,opacity:.4}));barGeometry.push({x:xx,index:first+i});});
+ for(const ref of d.references.filter(r=>r.value===1&&r.time<=all.at(-1).time)){const i=byDate.get(ref.time);if(i<first||i===undefined)continue;const n=element('circle',{cx:x(i-first),cy:y(all[i].low)+9,r:4,fill:ref.precision==='cursor'?'#e5a323':'white',stroke:'#b87900','stroke-width':1.5});n.append(element('title',{},`${ref.time} · 사진 참조`));group.append(n);}
+ for(const signal of model.signals){const time=position==='origin'?signal.originTime:signal.confirmedTime,i=byDate.get(time);if(i<first||i===undefined)continue;const xx=x(i-first),yy=y(all[i].low)+21;
+  const marker=position==='origin'&&signal.originTime!==signal.confirmedTime?element('circle',{cx:xx,cy:yy,r:4,fill:'white',stroke:'#7654ba','stroke-width':1.8}):element('path',{d:`M${xx},${yy-4} l4,4 l-4,4 l-4,-4 z`,fill:'#7654ba'});
+  marker.append(element('title',{},`후보 ${signal.originTime} / 확인 ${signal.confirmedTime}`));group.append(marker);
+ }
+ svg.append(group);svg.append(element('line',{x1:left,x2:W-right,y1:volumeTop-9,y2:volumeTop-9,stroke:'#dfe5ee'}));svg.append(element('text',{x:12,y:volumeTop+9,fill:'#63758b','font-size':12},'거래량'));
+ for(const i of [...new Set([0,Math.floor((b.length-1)/2),b.length-1])])svg.append(element('text',{x:x(i),y:H-7,'text-anchor':i===0?'start':i===b.length-1?'end':'middle',fill:'#63758b','font-size':12},b[i].time));
+ const cross=element('line',{id:'crosshair',x1:0,x2:0,y1:top,y2:bottom,stroke:'#8b99ac','stroke-dasharray':'3 4',visibility:'hidden'});svg.append(cross);readout(all.length-1);
+}
+function readout(i){const b=state.model.bars[i];if(!b)return;const rsi=state.model.rsi[i],ref=state.d.references.find(r=>r.time===b.time),s=state.model.signals.filter(s=>s.originTime===b.time||s.confirmedTime===b.time);$('readout').textContent=`${b.time} · O ${money(b.open)}  H ${money(b.high)}  L ${money(b.low)}  C ${money(b.close)} USD · 거래량 ${compact(b.volume||0)} · RSI(${state.model.config.rsiPeriod}) ${rsi===null?'준비 중':rsi.toFixed(2)}${ref?` · 원본 참조 ${ref.value}${ref.precision==='cursor'?' (날짜 확인)':' (날짜 추정)'}`:''}${s.length?' · 후보/확인 날짜는 아래 목록 참조':''}`;}
+function cell(value,cls){const td=document.createElement('td');td.textContent=value;if(cls)td.className=cls;return td;}
+function render(){
+ const d=DATA[$('symbol').value],endIndex=+$('cursor').value,bars=d.bars.slice(0,endIndex+1),model=computeSignals(bars,config()),position=$('model').value==='rebound'&&$('historical').checked?'origin':'confirmed';state={d,model,endIndex,position};const now=bars.at(-1).time;
+ $('date').value=now;$('previous').disabled=endIndex<=+$('cursor').min;$('next').disabled=endIndex>=+$('cursor').max;
+ document.querySelectorAll('[data-fields]').forEach(n=>n.hidden=!n.dataset.fields.split(' ').includes(model.config.model));
+ // Hidden overrides display:flex/grid in the stylesheet.
+ document.querySelectorAll('[data-fields]').forEach(n=>n.style.display=n.hidden?'none':'');
+ $('formula').textContent=formula(model.config);$('time-status').textContent=`확인 시점: ${now} 정규장 일봉 마감 이후${position==='origin'?' · 과거 후보봉에 사후 표시 중':''}${model.pending?' · 미확정 후보 '+model.pending:''}`;
+ const m=compareSignals(model.signals,d.references,model.bars,{position,startTime:d.startTime,endTime:now,tolerance:d.tolerance});
+ $('metrics').replaceChildren(...[[m.matched+' / '+m.total,'사진 신호와 일치'],[m.extra,'참조에 없는 추가 점'],[m.missed,'사진 신호 누락'],[m.contradictions+' / '+m.checkedNegatives,'확인된 0 출력과 충돌']].map(([a,b])=>{const div=document.createElement('div');div.className='metric';const strong=document.createElement('b');strong.textContent=a;const span=document.createElement('span');span.textContent=b;div.append(strong,span);return div;}));
+ $('evaluation-note').textContent=`대조 범위 ${d.startTime} ~ ${now}. ${d.tolerance?'사진 점 날짜 ±2봉 허용.':'NVDA 11/10·11/20은 이미지에서 추정한 날짜이며 나머지 기록은 십자선 확인.'} 추가 점은 모두 원본 오탐이라고 단정할 수 없습니다. 운영 신뢰도 점수가 아닙니다.`;
+ $('signal-rows').replaceChildren();const shown=model.signals.filter(s=>s.confirmedTime>=d.startTime).slice(-12).reverse();
+ for(const s of shown){const row=document.createElement('tr');row.append(cell(s.originTime),cell(s.confirmedTime),cell(s.confirmedIndex-s.originIndex+'봉','num'));$('signal-rows').append(row);}
+ if(!shown.length){const row=document.createElement('tr'),td=cell('이 시점까지 확정된 후보 신호가 없습니다.');td.colSpan=3;row.append(td);$('signal-rows').append(row);}
+ $('reference-rows').replaceChildren();for(const ref of d.references.filter(r=>r.time<=now).sort((a,b)=>b.time.localeCompare(a.time))){const row=document.createElement('tr');row.append(cell(ref.time),cell(ref.value),cell(ref.precision==='cursor'?'십자선 확인':'사진 위치 추정'));$('reference-rows').append(row);}
+ $('cross-stock').replaceChildren();for(const symbol of ['NVDA','MA','MRK','AMD','GILD','LLY','IREN']){const item=DATA[symbol],result=computeSignals(item.bars.filter(b=>b.time<=now),model.config),c=compareSignals(result.signals,item.references,result.bars,{position,startTime:item.startTime,endTime:now,tolerance:item.tolerance});const row=document.createElement('tr');row.append(cell(symbol),cell(c.matched+' / '+c.total,'num'),cell(c.extra,'num'),cell(c.missed,'num'),cell(c.contradictions+' / '+c.checkedNegatives,'num'));$('cross-stock').append(row);}
+ drawChart();
+}
+$('symbol').addEventListener('change',resetSymbol);$('model').addEventListener('change',()=>{if($('model').value==='return'){$('rsiPeriod').value=14;$('rsiThreshold').value=30;}else if($('model').value==='rsi'){$('rsiPeriod').value=2;$('rsiThreshold').value=10;}else if($('model').value==='rebound'){$('period').value=30;$('deviation').value=2;$('rebound').value=2.5;}render();});
+for(const id of ['period','deviation','rsiPeriod','rsiThreshold','rebound','bearish','entry','historical','log','window'])$(id).addEventListener('change',render);
+$('cursor').addEventListener('input',render);$('previous').onclick=()=>{$('cursor').value=+$('cursor').value-1;render();};$('next').onclick=()=>{$('cursor').value=+$('cursor').value+1;render();};$('latest').onclick=()=>{$('cursor').value=$('cursor').max;render();};
+$('date').addEventListener('change',()=>{const bars=DATA[$('symbol').value].bars;let i=bars.findLastIndex(b=>b.time<=$('date').value);$('cursor').value=Math.max(+$('cursor').min,i);render();});
+$('chart').addEventListener('pointermove',e=>{if(!barGeometry.length)return;const x=e.clientX-$('chart').getBoundingClientRect().left,near=barGeometry.reduce((a,b)=>Math.abs(b.x-x)<Math.abs(a.x-x)?b:a);readout(near.index);const line=$('crosshair');line.setAttribute('x1',near.x);line.setAttribute('x2',near.x);line.setAttribute('visibility','visible');});
+$('chart').addEventListener('pointerleave',()=>{readout(state.model.bars.length-1);$('crosshair')?.setAttribute('visibility','hidden');});
+new ResizeObserver(()=>drawChart()).observe($('chart'));
+$('download').onclick=()=>{const rows=[['symbol','model','origin_date','confirmed_date','delay_bars','display_position','original_formula_confirmed','config_json'],...state.model.signals.filter(s=>s.confirmedTime>=state.d.startTime).map(s=>[$('symbol').value,state.model.config.model,s.originTime,s.confirmedTime,s.confirmedIndex-s.originIndex,state.position,'false',JSON.stringify(state.model.config)])];const blob=new Blob(['\ufeff'+rows.map(r=>r.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='jins-low-signal-research.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+$('research-summary').textContent=`이번 추가 검증: 인과적 조건 ${STATS.causalCount.toLocaleString()}개, EMA 밴드·사후 확인 조건 ${STATS.advancedCount.toLocaleString()}개. 원본 재현으로 검증된 공식 0개. 조합은 서로 독립적이지 않으며 검증 횟수는 신뢰도 근거가 아닙니다.`;
+resetSymbol();
+</script></body></html>

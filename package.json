@@ -12,8 +12,9 @@
     "test": "node --test tests/*.test.js",
     "audit:quotes": "node scripts/audit-quotes.mjs",
     "prepare:alerts": "node scripts/sync-alert-worker.mjs",
-    "prebuild": "node scripts/sync-alert-worker.mjs --check && node scripts/sync-pine-source.mjs --check",
-    "prepare:pine": "node scripts/sync-pine-source.mjs"
+    "prebuild": "node scripts/sync-alert-worker.mjs --check && node scripts/sync-pine-source.mjs --check && node scripts/build-low-signal-lab.mjs --check",
+    "prepare:pine": "node scripts/sync-pine-source.mjs",
+    "prepare:signal-research": "node scripts/build-low-signal-lab.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.119.0",
